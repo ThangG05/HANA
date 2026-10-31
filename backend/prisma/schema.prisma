@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CaseStage {
+  NEW
+  CONSULTING
+  APPOINTMENT_BOOKED
+  EXAMINED
+  QUOTED
+  WON
+  PROCEDURE_DONE
+  AFTERCARE
+  COMPLETED
+  NURTURING
+  STOPPED
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+model Role {
+  id          String     @id @default(uuid()) @db.Uuid
+  code        String     @unique
+  name        String
+  description String?
+  users       UserRole[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  fullName     String
+  email        String?    @unique
+  phone        String?
+  status       UserStatus @default(ACTIVE)
+  roles        UserRole[]
+  assignedCases CustomerCase[] @relation("AssignedConsultant")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model UserRole {
+  userId String @db.Uuid
+  roleId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model Customer {
+  id          String         @id @default(uuid()) @db.Uuid
+  fullName    String
+  phone       String?
+  phoneNormalized String?
+  zaloId      String?
+  birthDate   DateTime?      @db.Date
+  area        String?
+  cases       CustomerCase[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([phoneNormalized])
+  @@index([fullName])
+}
+
+model Service {
+  id        String         @id @default(uuid()) @db.Uuid
+  code      String         @unique
+  name      String
+  groupName String?
+  isActive  Boolean        @default(true)
+  cases     CustomerCase[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model CustomerCase {
+  id                  String    @id @default(uuid()) @db.Uuid
+  customerId          String    @db.Uuid
+  serviceId           String?   @db.Uuid
+  assignedConsultantId String?  @db.Uuid
+  source              String?
+  stage               CaseStage @default(NEW)
+  openedAt            DateTime  @default(now())
+  closedAt            DateTime?
+  customer            Customer  @relation(fields: [customerId], references: [id])
+  service             Service?  @relation(fields: [serviceId], references: [id])
+  assignedConsultant  User?     @relation("AssignedConsultant", fields: [assignedConsultantId], references: [id])
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([customerId, stage])
+  @@index([assignedConsultantId, stage])
+  @@index([openedAt])
+}
