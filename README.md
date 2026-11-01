@@ -1,53 +1,55 @@
 # Hana Premium CRM
 
-Dự án được tách thành hai ứng dụng riêng để bạn có thể mở terminal tại từng thư mục và chạy độc lập:
+Monorepo gồm hai ứng dụng tách riêng và PostgreSQL:
 
-- `frontend/`: Next.js + React + TypeScript.
-- `backend/`: NestJS REST API + Prisma.
-- PostgreSQL chạy bằng Docker Compose tại thư mục gốc.
+- `frontend/`: Next.js + React + TypeScript, dashboard và biểu mẫu MVP.
+- `backend/`: NestJS REST API + Prisma, nghiệp vụ khách hàng, cơ hội, tương tác, công việc và lịch hẹn.
+- `docker-compose.yml`: PostgreSQL dùng cho phát triển local.
 
-## Cài đặt lần đầu
+## Khởi động lần đầu trên Windows
 
-Mở terminal tại thư mục gốc `E:\HANA\HanaPremiumCRM` và chạy một lần:
+Mở terminal ở thư mục gốc `E:\HANA\HanaPremiumCRM`:
 
 ```cmd
-pnpm install
+corepack pnpm install
 docker compose up -d db
 ```
 
-File `.env` ở thư mục gốc được dùng chung cho hai ứng dụng. Các giá trị hiện tại là cấu hình local mẫu; không dùng làm credentials production.
+File `.env` tại thư mục gốc là cấu hình local dùng chung. Thay các secret mẫu trước khi chia sẻ hoặc triển khai.
 
-## Chạy backend
+### Backend
 
-Mở một terminal riêng trong VS Code:
+Mở terminal riêng trong VS Code:
 
 ```cmd
 cd /d E:\HANA\HanaPremiumCRM\backend
-pnpm db:migrate
-pnpm dev
+corepack pnpm db:migrate
+corepack pnpm dev
 ```
 
-`pnpm db:migrate` chỉ cần chạy khi thiết lập database lần đầu hoặc khi có migration mới. API chạy tại `http://localhost:3001`, health check tại `http://localhost:3001/api/health`.
+Prisma sẽ tạo migration khi chạy lần đầu trên database mới và áp dụng các migration tiếp theo. API ở `http://localhost:3001/api`; health check là `http://localhost:3001/api/health`.
 
-## Chạy frontend
+### Frontend
 
 Mở terminal thứ hai:
 
 ```cmd
 cd /d E:\HANA\HanaPremiumCRM\frontend
-pnpm dev
+corepack pnpm dev
 ```
 
-Web chạy tại `http://localhost:3000`.
+Mở `http://localhost:3000`.
 
-## Chạy cả hai từ thư mục gốc
+## Phần đã triển khai
 
-Có thể dùng lệnh sau nếu muốn khởi động frontend và backend cùng lúc:
+- Tạo/tìm khách hàng; chuẩn hóa số điện thoại; cảnh báo hồ sơ có số điện thoại/email trùng nhưng không tự gộp.
+- Một khách hàng có nhiều cơ hội dịch vụ; chuyển giai đoạn theo sơ đồ đề xuất và lưu lịch sử trong cùng transaction.
+- Ghi nhận tương tác và tạo công việc theo dõi.
+- Tạo lịch hẹn, kiểm tra khoảng thời gian trùng bác sĩ/phòng và cập nhật trạng thái có lịch sử.
+- Dashboard kết nối API, biểu mẫu nhanh, danh sách cơ hội/khách/công việc/lịch hẹn.
 
-```cmd
-pnpm dev
-```
+## Giới hạn hiện tại
 
-## Lưu ý phạm vi
+Đây là bản MVP phát triển local, chưa có đăng nhập/RBAC, audit đầy đủ, hồ sơ khám, báo giá, thanh toán, ca thực hiện, chăm sóc sau ca, gửi tin tự động hoặc tích hợp bên ngoài. API chưa yêu cầu xác thực; chỉ dùng dữ liệu giả lập/local, không nhập dữ liệu khách hàng thật và không đưa API lên Internet trước khi hoàn thành M0 về xác thực, phân quyền và audit.
 
-Đây vẫn là bộ khung khởi đầu. Chưa có đăng nhập, phân quyền thực thi, các màn hình nghiệp vụ CRM, tích hợp kênh nhắn tin hoặc quy trình bảo vệ hồ sơ y khoa hoàn chỉnh. Cần hoàn thiện các phần này trước khi dùng dữ liệu khách hàng thật.
+Các quy tắc chuyển trạng thái và xử lý lịch đang theo đề xuất trong backlog; cần Hana xác nhận trước khi coi là quy trình chính thức.

@@ -14,7 +14,6 @@ enum CaseStage {
   EXAMINED
   QUOTED
   WON
-  PROCEDURE_DONE
   AFTERCARE
   COMPLETED
   NURTURING
@@ -24,6 +23,37 @@ enum CaseStage {
 enum UserStatus {
   ACTIVE
   DISABLED
+}
+
+enum InteractionDirection {
+  INBOUND
+  OUTBOUND
+  INTERNAL
+}
+
+enum InteractionChannel {
+  PHONE
+  ZALO
+  FACEBOOK
+  IN_PERSON
+  EMAIL
+  OTHER
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AppointmentStatus {
+  BOOKED
+  CONFIRMED
+  ARRIVED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
 }
 
 model Role {
@@ -44,6 +74,10 @@ model User {
   status       UserStatus @default(ACTIVE)
   roles        UserRole[]
   assignedCases CustomerCase[] @relation("AssignedConsultant")
+  interactions Interaction[]
+  assignedTasks WorkTask[] @relation("TaskAssignee")
+  createdTasks WorkTask[] @relation("TaskCreator")
+  appointments Appointment[] @relation("AppointmentCreator")
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }
@@ -63,14 +97,20 @@ model Customer {
   fullName    String
   phone       String?
   phoneNormalized String?
+  email       String?
+  emailNormalized String?
   zaloId      String?
   birthDate   DateTime?      @db.Date
   area        String?
   cases       CustomerCase[]
+  interactions Interaction[]
+  tasks       WorkTask[]
+  appointments Appointment[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   @@index([phoneNormalized])
+  @@index([emailNormalized])
   @@index([fullName])
 }
 
@@ -97,10 +137,106 @@ model CustomerCase {
   customer            Customer  @relation(fields: [customerId], references: [id])
   service             Service?  @relation(fields: [serviceId], references: [id])
   assignedConsultant  User?     @relation("AssignedConsultant", fields: [assignedConsultantId], references: [id])
+  stageHistory        CaseStageHistory[]
+  interactions        Interaction[]
+  tasks               WorkTask[]
+  appointments        Appointment[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
   @@index([customerId, stage])
   @@index([assignedConsultantId, stage])
   @@index([openedAt])
+}
+
+model CaseStageHistory {
+  id          String      @id @default(uuid()) @db.Uuid
+  caseId      String      @db.Uuid
+  fromStage   CaseStage?
+  toStage     CaseStage
+  reason      String?
+  changedById String?     @db.Uuid
+  changedAt   DateTime    @default(now())
+  customerCase CustomerCase @relation(fields: [caseId], references: [id], onDelete: Restrict)
+
+  @@index([caseId, changedAt])
+}
+
+model Interaction {
+  id          String               @id @default(uuid()) @db.Uuid
+  customerId  String               @db.Uuid
+  caseId      String?              @db.Uuid
+  userId      String?              @db.Uuid
+  channel     InteractionChannel
+  direction   InteractionDirection
+  summary     String
+  outcome     String?
+  occurredAt  DateTime             @default(now())
+  customer    Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customerCase CustomerCase?       @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  user        User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt   DateTime             @default(now())
+
+  @@index([customerId, occurredAt])
+  @@index([caseId, occurredAt])
+}
+
+model WorkTask {
+  id          String      @id @default(uuid()) @db.Uuid
+  customerId  String?     @db.Uuid
+  caseId      String?     @db.Uuid
+  title       String
+  description String?
+  dueAt       DateTime?
+  status      TaskStatus  @default(OPEN)
+  assigneeId  String?     @db.Uuid
+  creatorId   String?     @db.Uuid
+  idempotencyKey String?  @unique
+  completedAt DateTime?
+  customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customerCase CustomerCase? @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  assignee    User?       @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  creator     User?       @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([status, dueAt])
+  @@index([assigneeId, status])
+  @@index([customerId])
+}
+
+model Appointment {
+  id          String            @id @default(uuid()) @db.Uuid
+  customerId  String            @db.Uuid
+  caseId      String?           @db.Uuid
+  startsAt    DateTime
+  endsAt      DateTime
+  doctorName  String?
+  roomName    String?
+  status      AppointmentStatus @default(BOOKED)
+  reason      String?
+  previousAppointmentId String? @db.Uuid
+  createdById String?           @db.Uuid
+  customer    Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customerCase CustomerCase?    @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  createdBy   User?             @relation("AppointmentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  statusHistory AppointmentStatusHistory[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([startsAt, endsAt, status])
+  @@index([customerId, startsAt])
+  @@index([caseId])
+}
+
+model AppointmentStatusHistory {
+  id            String            @id @default(uuid()) @db.Uuid
+  appointmentId String            @db.Uuid
+  fromStatus    AppointmentStatus?
+  toStatus      AppointmentStatus
+  reason        String?
+  changedAt     DateTime           @default(now())
+  appointment  Appointment       @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
+
+  @@index([appointmentId, changedAt])
 }

@@ -3,10 +3,10 @@
   "private": true,
   "packageManager": "pnpm@10.0.0",
   "scripts": {
-    "dev": "pnpm --parallel --filter @hana/frontend --filter @hana/backend dev",
-    "build": "pnpm --filter @hana/backend build && pnpm --filter @hana/frontend build",
-    "db:generate": "pnpm --filter @hana/backend db:generate",
-    "db:migrate": "pnpm --filter @hana/backend db:migrate",
-    "db:studio": "pnpm --filter @hana/backend db:studio"
+    "dev": "corepack pnpm --parallel --filter @hana/frontend --filter @hana/backend dev",
+    "build": "corepack pnpm --filter @hana/backend build && corepack pnpm --filter @hana/frontend build",
+    "db:generate": "corepack pnpm --filter @hana/backend db:generate",
+    "db:migrate": "corepack pnpm --filter @hana/backend db:migrate",
+    "db:studio": "corepack pnpm --filter @hana/backend db:studio"
   }
 }

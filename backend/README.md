@@ -4,8 +4,8 @@ NestJS REST API. Cài dependencies một lần tại thư mục gốc (`pnpm ins
 
 ```cmd
 cd /d E:\HANA\HanaPremiumCRM\backend
-pnpm db:migrate
-pnpm dev
+corepack pnpm db:migrate
+corepack pnpm dev
 ```
 
 API health check: http://localhost:3001/api/health. Cấu hình dùng chung nằm trong `../.env`.

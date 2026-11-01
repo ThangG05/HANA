@@ -8,7 +8,7 @@ async function bootstrap() {
   app.setGlobalPrefix("api");
   app.enableCors({ origin: config.get<string>("WEB_ORIGIN", "http://localhost:3000") });
   const port = Number(config.get<string>("API_PORT", "3001"));
-  await app.listen(port, "0.0.0.0");
+  await app.listen(port, "127.0.0.1");
 }
 
 void bootstrap();
