@@ -5,10 +5,11 @@
   "scripts": {
     "dev": "prisma generate --config prisma.config.ts && nest start --watch",
     "build": "prisma generate --config prisma.config.ts && nest build",
-    "start": "node dist/main",
+    "start": "node dist/src/main.js",
     "db:generate": "prisma generate --config prisma.config.ts",
-    "db:migrate": "prisma migrate dev --config prisma.config.ts",
-    "db:studio": "prisma studio --config prisma.config.ts"
+    "db:migrate": "echo \"Không dùng prisma migrate: schema do file SQL trong db/migrations quản lý. Xem db/migrations/README.md\" && exit 1",
+    "db:studio": "prisma studio --config prisma.config.ts",
+    "test": "nest build && node --test \"dist/**/*.spec.js\""
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
@@ -17,6 +18,9 @@
     "@nestjs/platform-express": "^11.0.0",
     "@prisma/adapter-pg": "^7.0.0",
     "@prisma/client": "^7.0.0",
+    "@supabase/supabase-js": "^2.118.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
     "dotenv": "^16.4.7",
     "pg": "^8.16.0",
     "reflect-metadata": "^0.2.2",

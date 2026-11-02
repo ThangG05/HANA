@@ -17,17 +17,20 @@ docker compose up -d db
 
 File `.env` tại thư mục gốc là cấu hình local dùng chung. Thay các secret mẫu trước khi chia sẻ hoặc triển khai.
 
-### Backend
+### Database (Supabase)
 
-Mở terminal riêng trong VS Code:
+Schema do các file SQL trong `backend/db/migrations/` quản lý (xem `README.md` trong thư mục đó). Đặt `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` trong `.env`.
+
+### Backend
 
 ```cmd
 cd /d E:\HANA\HanaPremiumCRM\backend
-corepack pnpm db:migrate
+corepack pnpm exec prisma db pull --config prisma.config.ts
+corepack pnpm db:generate
 corepack pnpm dev
 ```
 
-Prisma sẽ tạo migration khi chạy lần đầu trên database mới và áp dụng các migration tiếp theo. API ở `http://localhost:3001/api`; health check là `http://localhost:3001/api/health`.
+Không dùng `prisma migrate`. Mọi endpoint (trừ `/api/health`) yêu cầu token đăng nhập Supabase và quyền theo bảng `quyen_vai_tro`. Chạy kiểm tra: `corepack pnpm test`.
 
 ### Frontend
 

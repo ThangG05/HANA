@@ -1,242 +1,1522 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["auth", "public"]
 }
 
-enum CaseStage {
-  NEW
-  CONSULTING
-  APPOINTMENT_BOOKED
-  EXAMINED
-  QUOTED
-  WON
-  AFTERCARE
-  COMPLETED
-  NURTURING
-  STOPPED
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model audit_log_entries {
+  instance_id String?   @db.Uuid
+  id          String    @id @db.Uuid
+  payload     Json?     @db.Json
+  created_at  DateTime? @db.Timestamptz(6)
+  ip_address  String    @default("") @db.VarChar(64)
+
+  @@index([instance_id], map: "audit_logs_instance_id_idx")
+  @@schema("auth")
 }
 
-enum UserStatus {
-  ACTIVE
-  DISABLED
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model custom_oauth_providers {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_type           String
+  identifier              String    @unique
+  name                    String
+  client_id               String
+  client_secret           String
+  acceptable_client_ids   String[]  @default([])
+  scopes                  String[]  @default([])
+  pkce_enabled            Boolean   @default(true)
+  attribute_mapping       Json      @default("{}")
+  authorization_params    Json      @default("{}")
+  enabled                 Boolean   @default(true)
+  email_optional          Boolean   @default(false)
+  issuer                  String?
+  discovery_url           String?
+  skip_nonce_check        Boolean   @default(false)
+  cached_discovery        Json?
+  discovery_cached_at     DateTime? @db.Timestamptz(6)
+  authorization_url       String?
+  token_url               String?
+  userinfo_url            String?
+  jwks_uri                String?
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime  @default(now()) @db.Timestamptz(6)
+  custom_claims_allowlist String[]  @default([])
+
+  @@index([created_at])
+  @@index([enabled])
+  @@index([identifier])
+  @@index([provider_type])
+  @@schema("auth")
 }
 
-enum InteractionDirection {
-  INBOUND
-  OUTBOUND
-  INTERNAL
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model flow_state {
+  id                     String                 @id @db.Uuid
+  user_id                String?                @db.Uuid
+  auth_code              String?
+  code_challenge_method  code_challenge_method?
+  code_challenge         String?
+  provider_type          String
+  provider_access_token  String?
+  provider_refresh_token String?
+  created_at             DateTime?              @db.Timestamptz(6)
+  updated_at             DateTime?              @db.Timestamptz(6)
+  authentication_method  String
+  auth_code_issued_at    DateTime?              @db.Timestamptz(6)
+  invite_token           String?
+  referrer               String?
+  oauth_client_state_id  String?                @db.Uuid
+  linking_target_id      String?                @db.Uuid
+  email_optional         Boolean                @default(false)
+  saml_relay_states      saml_relay_states[]
+
+  @@index([created_at(sort: Desc)])
+  @@index([auth_code], map: "idx_auth_code")
+  @@index([user_id, authentication_method], map: "idx_user_id_auth_method")
+  @@schema("auth")
 }
 
-enum InteractionChannel {
-  PHONE
-  ZALO
-  FACEBOOK
-  IN_PERSON
-  EMAIL
-  OTHER
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model identities {
+  provider_id     String
+  user_id         String    @db.Uuid
+  identity_data   Json
+  provider        String
+  last_sign_in_at DateTime? @db.Timestamptz(6)
+  created_at      DateTime? @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+  email           String?   @default(dbgenerated("lower((identity_data ->> 'email'::text))"))
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  users           users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([provider_id, provider], map: "identities_provider_id_provider_unique")
+  @@index([email])
+  @@index([user_id])
+  @@schema("auth")
 }
 
-enum TaskStatus {
-  OPEN
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model instances {
+  id              String    @id @db.Uuid
+  uuid            String?   @db.Uuid
+  raw_base_config String?
+  created_at      DateTime? @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  @@schema("auth")
 }
 
-enum AppointmentStatus {
-  BOOKED
-  CONFIRMED
-  ARRIVED
-  COMPLETED
-  CANCELLED
-  NO_SHOW
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mfa_amr_claims {
+  session_id            String   @db.Uuid
+  created_at            DateTime @db.Timestamptz(6)
+  updated_at            DateTime @db.Timestamptz(6)
+  authentication_method String
+  id                    String   @id(map: "amr_id_pk") @db.Uuid
+  sessions              sessions @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([session_id, authentication_method], map: "mfa_amr_claims_session_id_authentication_method_pkey")
+  @@schema("auth")
 }
 
-model Role {
-  id          String     @id @default(uuid()) @db.Uuid
-  code        String     @unique
-  name        String
-  description String?
-  users       UserRole[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mfa_challenges {
+  id                     String      @id @db.Uuid
+  factor_id              String      @db.Uuid
+  created_at             DateTime    @db.Timestamptz(6)
+  verified_at            DateTime?   @db.Timestamptz(6)
+  ip_address             String      @db.Inet
+  otp_code               String?
+  web_authn_session_data Json?
+  mfa_factors            mfa_factors @relation(fields: [factor_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "mfa_challenges_auth_factor_id_fkey")
+
+  @@index([created_at(sort: Desc)], map: "mfa_challenge_created_at_idx")
+  @@schema("auth")
 }
 
-model User {
-  id           String     @id @default(uuid()) @db.Uuid
-  fullName     String
-  email        String?    @unique
-  phone        String?
-  status       UserStatus @default(ACTIVE)
-  roles        UserRole[]
-  assignedCases CustomerCase[] @relation("AssignedConsultant")
-  interactions Interaction[]
-  assignedTasks WorkTask[] @relation("TaskAssignee")
-  createdTasks WorkTask[] @relation("TaskCreator")
-  appointments Appointment[] @relation("AppointmentCreator")
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mfa_factors {
+  id                           String                  @id @db.Uuid
+  user_id                      String                  @db.Uuid
+  friendly_name                String?
+  factor_type                  factor_type
+  status                       factor_status
+  created_at                   DateTime                @db.Timestamptz(6)
+  updated_at                   DateTime                @db.Timestamptz(6)
+  secret                       String?
+  phone                        String?
+  last_challenged_at           DateTime?               @unique @db.Timestamptz(6)
+  web_authn_credential         Json?
+  web_authn_aaguid             String?                 @db.Uuid
+  last_webauthn_challenge_data Json?
+  mfa_challenges               mfa_challenges[]
+  users                        users                   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mfa_recovery_code_sets       mfa_recovery_code_sets?
+
+  @@unique([friendly_name, user_id], map: "mfa_factors_user_friendly_name_unique", where: raw("(TRIM(BOTH FROM friendly_name) <> ''::text)"))
+  @@unique([user_id, phone], map: "unique_phone_factor_per_user")
+  @@index([user_id, created_at], map: "factor_id_created_at_idx")
+  @@index([user_id])
+  @@schema("auth")
 }
 
-model UserRole {
-  userId String @db.Uuid
-  roleId String @db.Uuid
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model mfa_recovery_code_sets {
+  id                        String               @id @db.Uuid
+  user_id                   String               @unique @db.Uuid
+  mfa_factor_id             String               @unique @db.Uuid
+  failed_verification_count Int                  @default(0)
+  verification_locked_until DateTime?            @db.Timestamptz(6)
+  created_at                DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime             @default(now()) @db.Timestamptz(6)
+  mfa_factors               mfa_factors          @relation(fields: [mfa_factor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                     users                @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mfa_recovery_codes        mfa_recovery_codes[]
 
-  @@id([userId, roleId])
-  @@index([roleId])
+  @@schema("auth")
 }
 
-model Customer {
-  id          String         @id @default(uuid()) @db.Uuid
-  fullName    String
-  phone       String?
-  phoneNormalized String?
-  email       String?
-  emailNormalized String?
-  zaloId      String?
-  birthDate   DateTime?      @db.Date
-  area        String?
-  cases       CustomerCase[]
-  interactions Interaction[]
-  tasks       WorkTask[]
-  appointments Appointment[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+model mfa_recovery_codes {
+  id                       String                 @id @db.Uuid
+  mfa_recovery_code_set_id String                 @db.Uuid
+  code_hash                String
+  consumed_at              DateTime?              @db.Timestamptz(6)
+  created_at               DateTime               @default(now()) @db.Timestamptz(6)
+  mfa_recovery_code_sets   mfa_recovery_code_sets @relation(fields: [mfa_recovery_code_set_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@index([phoneNormalized])
-  @@index([emailNormalized])
-  @@index([fullName])
+  @@index([mfa_recovery_code_set_id], map: "mfa_recovery_codes_set_id_idx")
+  @@schema("auth")
 }
 
-model Service {
-  id        String         @id @default(uuid()) @db.Uuid
-  code      String         @unique
-  name      String
-  groupName String?
-  isActive  Boolean        @default(true)
-  cases     CustomerCase[]
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model oauth_authorizations {
+  id                    String                     @id @db.Uuid
+  authorization_id      String                     @unique
+  client_id             String                     @db.Uuid
+  user_id               String?                    @db.Uuid
+  redirect_uri          String
+  scope                 String
+  state                 String?
+  resource              String?
+  code_challenge        String?
+  code_challenge_method code_challenge_method?
+  response_type         oauth_response_type        @default(code)
+  status                oauth_authorization_status @default(pending)
+  authorization_code    String?                    @unique
+  created_at            DateTime                   @default(now()) @db.Timestamptz(6)
+  expires_at            DateTime                   @default(dbgenerated("(now() + '00:03:00'::interval)")) @db.Timestamptz(6)
+  approved_at           DateTime?                  @db.Timestamptz(6)
+  nonce                 String?
+  oauth_clients         oauth_clients              @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                 users?                     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expires_at], map: "oauth_auth_pending_exp_idx", where: raw("(status = 'pending'::auth.oauth_authorization_status)"))
+  @@schema("auth")
 }
 
-model CustomerCase {
-  id                  String    @id @default(uuid()) @db.Uuid
-  customerId          String    @db.Uuid
-  serviceId           String?   @db.Uuid
-  assignedConsultantId String?  @db.Uuid
-  source              String?
-  stage               CaseStage @default(NEW)
-  openedAt            DateTime  @default(now())
-  closedAt            DateTime?
-  customer            Customer  @relation(fields: [customerId], references: [id])
-  service             Service?  @relation(fields: [serviceId], references: [id])
-  assignedConsultant  User?     @relation("AssignedConsultant", fields: [assignedConsultantId], references: [id])
-  stageHistory        CaseStageHistory[]
-  interactions        Interaction[]
-  tasks               WorkTask[]
-  appointments        Appointment[]
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model oauth_client_states {
+  id            String   @id @db.Uuid
+  provider_type String
+  code_verifier String?
+  created_at    DateTime @db.Timestamptz(6)
 
-  @@index([customerId, stage])
-  @@index([assignedConsultantId, stage])
-  @@index([openedAt])
+  @@index([created_at], map: "idx_oauth_client_states_created_at")
+  @@schema("auth")
 }
 
-model CaseStageHistory {
-  id          String      @id @default(uuid()) @db.Uuid
-  caseId      String      @db.Uuid
-  fromStage   CaseStage?
-  toStage     CaseStage
-  reason      String?
-  changedById String?     @db.Uuid
-  changedAt   DateTime    @default(now())
-  customerCase CustomerCase @relation(fields: [caseId], references: [id], onDelete: Restrict)
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model oauth_clients {
+  id                         String                  @id @db.Uuid
+  client_secret_hash         String?
+  registration_type          oauth_registration_type
+  redirect_uris              String
+  grant_types                String
+  client_name                String?
+  client_uri                 String?
+  logo_uri                   String?
+  created_at                 DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                @default(now()) @db.Timestamptz(6)
+  deleted_at                 DateTime?               @db.Timestamptz(6)
+  client_type                oauth_client_type       @default(confidential)
+  token_endpoint_auth_method String
+  oauth_authorizations       oauth_authorizations[]
+  oauth_consents             oauth_consents[]
+  sessions                   sessions[]
 
-  @@index([caseId, changedAt])
+  @@index([deleted_at])
+  @@schema("auth")
 }
 
-model Interaction {
-  id          String               @id @default(uuid()) @db.Uuid
-  customerId  String               @db.Uuid
-  caseId      String?              @db.Uuid
-  userId      String?              @db.Uuid
-  channel     InteractionChannel
-  direction   InteractionDirection
-  summary     String
-  outcome     String?
-  occurredAt  DateTime             @default(now())
-  customer    Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  customerCase CustomerCase?       @relation(fields: [caseId], references: [id], onDelete: Restrict)
-  user        User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt   DateTime             @default(now())
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model oauth_consents {
+  id            String        @id @db.Uuid
+  user_id       String        @db.Uuid
+  client_id     String        @db.Uuid
+  scopes        String
+  granted_at    DateTime      @default(now()) @db.Timestamptz(6)
+  revoked_at    DateTime?     @db.Timestamptz(6)
+  oauth_clients oauth_clients @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users         users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@index([customerId, occurredAt])
-  @@index([caseId, occurredAt])
+  @@unique([user_id, client_id], map: "oauth_consents_user_client_unique")
+  @@index([client_id], map: "oauth_consents_active_client_idx", where: raw("(revoked_at IS NULL)"))
+  @@index([user_id, client_id], map: "oauth_consents_active_user_client_idx", where: raw("(revoked_at IS NULL)"))
+  @@index([user_id, granted_at(sort: Desc)], map: "oauth_consents_user_order_idx")
+  @@schema("auth")
 }
 
-model WorkTask {
-  id          String      @id @default(uuid()) @db.Uuid
-  customerId  String?     @db.Uuid
-  caseId      String?     @db.Uuid
-  title       String
-  description String?
-  dueAt       DateTime?
-  status      TaskStatus  @default(OPEN)
-  assigneeId  String?     @db.Uuid
-  creatorId   String?     @db.Uuid
-  idempotencyKey String?  @unique
-  completedAt DateTime?
-  customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  customerCase CustomerCase? @relation(fields: [caseId], references: [id], onDelete: Restrict)
-  assignee    User?       @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  creator     User?       @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: SetNull)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model one_time_tokens {
+  id         String              @id @db.Uuid
+  user_id    String              @db.Uuid
+  token_type one_time_token_type
+  token_hash String
+  relates_to String
+  created_at DateTime            @default(now()) @db.Timestamp(6)
+  updated_at DateTime            @default(now()) @db.Timestamp(6)
+  expires_at DateTime?           @db.Timestamptz(6)
+  users      users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@index([status, dueAt])
-  @@index([assigneeId, status])
-  @@index([customerId])
+  @@unique([user_id, token_type])
+  @@index([relates_to], map: "one_time_tokens_relates_to_hash_idx", type: Hash)
+  @@index([token_hash], map: "one_time_tokens_token_hash_hash_idx", type: Hash)
+  @@schema("auth")
 }
 
-model Appointment {
-  id          String            @id @default(uuid()) @db.Uuid
-  customerId  String            @db.Uuid
-  caseId      String?           @db.Uuid
-  startsAt    DateTime
-  endsAt      DateTime
-  doctorName  String?
-  roomName    String?
-  status      AppointmentStatus @default(BOOKED)
-  reason      String?
-  previousAppointmentId String? @db.Uuid
-  createdById String?           @db.Uuid
-  customer    Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  customerCase CustomerCase?    @relation(fields: [caseId], references: [id], onDelete: Restrict)
-  createdBy   User?             @relation("AppointmentCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  statusHistory AppointmentStatusHistory[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model refresh_tokens {
+  instance_id String?   @db.Uuid
+  id          BigInt    @id @default(autoincrement())
+  token       String?   @unique(map: "refresh_tokens_token_unique") @db.VarChar(255)
+  user_id     String?   @db.VarChar(255)
+  revoked     Boolean?
+  created_at  DateTime? @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  parent      String?   @db.VarChar(255)
+  session_id  String?   @db.Uuid
+  sessions    sessions? @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@index([startsAt, endsAt, status])
-  @@index([customerId, startsAt])
-  @@index([caseId])
+  @@index([instance_id])
+  @@index([instance_id, user_id])
+  @@index([parent])
+  @@index([session_id, revoked])
+  @@index([updated_at(sort: Desc)])
+  @@schema("auth")
 }
 
-model AppointmentStatusHistory {
-  id            String            @id @default(uuid()) @db.Uuid
-  appointmentId String            @db.Uuid
-  fromStatus    AppointmentStatus?
-  toStatus      AppointmentStatus
-  reason        String?
-  changedAt     DateTime           @default(now())
-  appointment  Appointment       @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model saml_providers {
+  id                String        @id @db.Uuid
+  sso_provider_id   String        @db.Uuid
+  entity_id         String        @unique
+  metadata_xml      String
+  metadata_url      String?
+  attribute_mapping Json?
+  created_at        DateTime?     @db.Timestamptz(6)
+  updated_at        DateTime?     @db.Timestamptz(6)
+  name_id_format    String?
+  sso_providers     sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@index([appointmentId, changedAt])
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model saml_relay_states {
+  id              String        @id @db.Uuid
+  sso_provider_id String        @db.Uuid
+  request_id      String
+  for_email       String?
+  redirect_to     String?
+  created_at      DateTime?     @db.Timestamptz(6)
+  updated_at      DateTime?     @db.Timestamptz(6)
+  flow_state_id   String?       @db.Uuid
+  flow_state      flow_state?   @relation(fields: [flow_state_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sso_providers   sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)])
+  @@index([for_email])
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model schema_migrations {
+  version String @id @db.VarChar(255)
+
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model scim_tokens {
+  id              String        @id @db.Uuid
+  sso_provider_id String        @db.Uuid
+  token_hash      String        @unique
+  prefix          String
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  expires_at      DateTime?     @db.Timestamptz(6)
+  revoked_at      DateTime?     @db.Timestamptz(6)
+  last_used_at    DateTime?     @db.Timestamptz(6)
+  sso_providers   sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expires_at])
+  @@index([revoked_at])
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+model scim_users {
+  id              String        @id @db.Uuid
+  sso_provider_id String        @db.Uuid
+  user_id         String?       @db.Uuid
+  resource        Json
+  user_name       String        @default(dbgenerated("lower((resource ->> 'userName'::text))"))
+  external_id     String?       @default(dbgenerated("(resource ->> 'externalId'::text)"))
+  active          Boolean       @default(dbgenerated("COALESCE(((resource ->> 'active'::text))::boolean, true)"))
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  deleted_at      DateTime?     @db.Timestamptz(6)
+  sso_providers   sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users           users?        @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+
+  @@unique([sso_provider_id, external_id], map: "scim_users_external_id_key", where: raw("((external_id IS NOT NULL) AND (deleted_at IS NULL))"))
+  @@unique([sso_provider_id, user_name], map: "scim_users_user_name_key", where: raw("(deleted_at IS NULL)"))
+  @@index([sso_provider_id, created_at, id], map: "scim_users_created_at_idx", where: raw("(deleted_at IS NULL)"))
+  @@index([deleted_at])
+  @@index([sso_provider_id, id], map: "scim_users_id_idx", where: raw("(deleted_at IS NULL)"))
+  @@index([sso_provider_id])
+  @@index([sso_provider_id, updated_at, id], map: "scim_users_updated_at_idx", where: raw("(deleted_at IS NULL)"))
+  @@index([user_id])
+  @@index([sso_provider_id, user_name, id], map: "scim_users_user_name_idx", where: raw("(deleted_at IS NULL)"))
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sessions {
+  id                     String           @id @db.Uuid
+  user_id                String           @db.Uuid
+  created_at             DateTime?        @db.Timestamptz(6)
+  updated_at             DateTime?        @db.Timestamptz(6)
+  factor_id              String?          @db.Uuid
+  aal                    aal_level?
+  not_after              DateTime?        @db.Timestamptz(6)
+  refreshed_at           DateTime?        @db.Timestamp(6)
+  user_agent             String?
+  ip                     String?          @db.Inet
+  tag                    String?
+  oauth_client_id        String?          @db.Uuid
+  refresh_token_hmac_key String?
+  refresh_token_counter  BigInt?
+  scopes                 String?
+  mfa_amr_claims         mfa_amr_claims[]
+  refresh_tokens         refresh_tokens[]
+  oauth_clients          oauth_clients?   @relation(fields: [oauth_client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                  users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([not_after(sort: Desc)])
+  @@index([oauth_client_id])
+  @@index([user_id])
+  @@index([user_id, created_at], map: "user_id_created_at_idx")
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model sso_domains {
+  id              String        @id @db.Uuid
+  sso_provider_id String        @db.Uuid
+  domain          String
+  created_at      DateTime?     @db.Timestamptz(6)
+  updated_at      DateTime?     @db.Timestamptz(6)
+  sso_providers   sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model sso_providers {
+  id                String              @id @db.Uuid
+  resource_id       String?
+  created_at        DateTime?           @db.Timestamptz(6)
+  updated_at        DateTime?           @db.Timestamptz(6)
+  disabled          Boolean?
+  saml_providers    saml_providers[]
+  saml_relay_states saml_relay_states[]
+  scim_tokens       scim_tokens[]
+  scim_users        scim_users[]
+  sso_domains       sso_domains[]
+
+  @@index([resource_id], map: "sso_providers_resource_id_pattern_idx")
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model users {
+  instance_id                 String?                 @db.Uuid
+  id                          String                  @id @db.Uuid
+  aud                         String?                 @db.VarChar(255)
+  role                        String?                 @db.VarChar(255)
+  email                       String?                 @unique(map: "users_email_partial_key", where: raw("(is_sso_user = false)")) @db.VarChar(255)
+  encrypted_password          String?                 @db.VarChar(255)
+  email_confirmed_at          DateTime?               @db.Timestamptz(6)
+  invited_at                  DateTime?               @db.Timestamptz(6)
+  confirmation_token          String?                 @unique(map: "confirmation_token_idx", where: raw("((confirmation_token)::text !~ '^[0-9 ]*$'::text)")) @db.VarChar(255)
+  confirmation_sent_at        DateTime?               @db.Timestamptz(6)
+  recovery_token              String?                 @unique(map: "recovery_token_idx", where: raw("((recovery_token)::text !~ '^[0-9 ]*$'::text)")) @db.VarChar(255)
+  recovery_sent_at            DateTime?               @db.Timestamptz(6)
+  email_change_token_new      String?                 @unique(map: "email_change_token_new_idx", where: raw("((email_change_token_new)::text !~ '^[0-9 ]*$'::text)")) @db.VarChar(255)
+  email_change                String?                 @db.VarChar(255)
+  email_change_sent_at        DateTime?               @db.Timestamptz(6)
+  last_sign_in_at             DateTime?               @db.Timestamptz(6)
+  raw_app_meta_data           Json?
+  raw_user_meta_data          Json?
+  is_super_admin              Boolean?
+  created_at                  DateTime?               @db.Timestamptz(6)
+  updated_at                  DateTime?               @db.Timestamptz(6)
+  phone                       String?                 @unique
+  phone_confirmed_at          DateTime?               @db.Timestamptz(6)
+  phone_change                String?                 @default("")
+  phone_change_token          String?                 @default("") @db.VarChar(255)
+  phone_change_sent_at        DateTime?               @db.Timestamptz(6)
+  confirmed_at                DateTime?               @default(dbgenerated("LEAST(email_confirmed_at, phone_confirmed_at)")) @db.Timestamptz(6)
+  email_change_token_current  String?                 @unique(map: "email_change_token_current_idx", where: raw("((email_change_token_current)::text !~ '^[0-9 ]*$'::text)")) @default("") @db.VarChar(255)
+  email_change_confirm_status Int?                    @default(0) @db.SmallInt
+  banned_until                DateTime?               @db.Timestamptz(6)
+  reauthentication_token      String?                 @unique(map: "reauthentication_token_idx", where: raw("((reauthentication_token)::text !~ '^[0-9 ]*$'::text)")) @default("") @db.VarChar(255)
+  reauthentication_sent_at    DateTime?               @db.Timestamptz(6)
+  is_sso_user                 Boolean                 @default(false)
+  deleted_at                  DateTime?               @db.Timestamptz(6)
+  is_anonymous                Boolean                 @default(false)
+  identities                  identities[]
+  mfa_factors                 mfa_factors[]
+  mfa_recovery_code_sets      mfa_recovery_code_sets?
+  oauth_authorizations        oauth_authorizations[]
+  oauth_consents              oauth_consents[]
+  one_time_tokens             one_time_tokens[]
+  scim_users                  scim_users[]
+  sessions                    sessions[]
+  webauthn_challenges         webauthn_challenges[]
+  webauthn_credentials        webauthn_credentials[]
+  nhan_vien                   nhan_vien?
+
+  @@index([created_at(sort: Desc)], map: "idx_users_created_at_desc")
+  @@index([email], map: "idx_users_email")
+  @@index([last_sign_in_at(sort: Desc)], map: "idx_users_last_sign_in_at_desc")
+  @@index([instance_id])
+  @@index([is_anonymous])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model webauthn_challenges {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String?  @db.Uuid
+  challenge_type String
+  session_data   Json
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  expires_at     DateTime @db.Timestamptz(6)
+  users          users?   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expires_at])
+  @@index([user_id])
+  @@schema("auth")
+}
+
+model webauthn_credentials {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String    @db.Uuid
+  credential_id    Bytes     @unique
+  public_key       Bytes
+  attestation_type String    @default("")
+  aaguid           String?   @db.Uuid
+  sign_count       BigInt    @default(0)
+  transports       Json      @default("[]")
+  backup_eligible  Boolean   @default(false)
+  backed_up        Boolean   @default(false)
+  friendly_name    String    @default("")
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+  last_used_at     DateTime? @db.Timestamptz(6)
+  users            users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model bao_gia {
+  bao_gia_id                                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  co_hoi_id                                 String               @unique(map: "uq_bao_gia_da_chap_nhan", where: raw("(trang_thai = 'da_chap_nhan'::text)")) @db.Uuid
+  tham_kham_id                              String               @db.Uuid
+  phien_ban                                 Int                  @default(1)
+  ngay_lap                                  DateTime             @default(now()) @db.Timestamptz(6)
+  hieu_luc_den                              DateTime?            @db.Timestamptz(6)
+  trang_thai                                String               @default("nhap")
+  nguoi_lap_id                              String?              @db.Uuid
+  khach_xac_nhan_luc                        DateTime?            @db.Timestamptz(6)
+  ngay_tao                                  DateTime             @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                             DateTime             @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                              String?              @db.Uuid
+  co_hoi_dich_vu                            co_hoi_dich_vu       @relation(fields: [co_hoi_id], references: [co_hoi_id], onUpdate: NoAction)
+  nhan_vien_bao_gia_nguoi_lap_idTonhan_vien nhan_vien?           @relation("bao_gia_nguoi_lap_idTonhan_vien", fields: [nguoi_lap_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_bao_gia_nguoi_tao_idTonhan_vien nhan_vien?           @relation("bao_gia_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  lan_tham_kham                             lan_tham_kham        @relation(fields: [tham_kham_id, co_hoi_id], references: [tham_kham_id, co_hoi_id], onUpdate: NoAction)
+  ca_thuc_hien                              ca_thuc_hien[]
+  chi_tiet_bao_gia                          chi_tiet_bao_gia[]
+  ky_thanh_toan                             ky_thanh_toan[]
+  phan_bo_thanh_toan                        phan_bo_thanh_toan[]
+  thanh_toan                                thanh_toan[]
+
+  @@unique([bao_gia_id, co_hoi_id])
+  @@unique([co_hoi_id, phien_ban])
+  @@index([co_hoi_id])
+  @@index([nguoi_lap_id])
+  @@index([nguoi_tao_id])
+  @@index([tham_kham_id, co_hoi_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ca_thuc_hien {
+  ca_id                                               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  khach_hang_id                                       String            @db.Uuid
+  co_hoi_id                                           String            @db.Uuid
+  tham_kham_id                                        String            @db.Uuid
+  bao_gia_id                                          String            @db.Uuid
+  chi_tiet_bao_gia_id                                 String            @db.Uuid
+  bac_si_id                                           String            @db.Uuid
+  co_so_id                                            String            @db.Uuid
+  du_kien_luc                                         DateTime?         @db.Timestamptz(6)
+  bat_dau_luc                                         DateTime?         @db.Timestamptz(6)
+  ket_thuc_luc                                        DateTime?         @db.Timestamptz(6)
+  trang_thai                                          String            @default("du_kien")
+  kiem_tra_truoc_ca                                   String?
+  ky_thuat_thuc_hien                                  String?
+  huong_dan_sau_ca                                    String?
+  nguoi_ban_giao_id                                   String?           @db.Uuid
+  ngay_tao                                            DateTime          @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                       DateTime          @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                        String?           @db.Uuid
+  nhan_vien_ca_thuc_hien_bac_si_idTonhan_vien         nhan_vien         @relation("ca_thuc_hien_bac_si_idTonhan_vien", fields: [bac_si_id], references: [nhan_vien_id], onUpdate: NoAction)
+  bao_gia                                             bao_gia           @relation(fields: [bao_gia_id, co_hoi_id], references: [bao_gia_id, co_hoi_id], onUpdate: NoAction)
+  chi_tiet_bao_gia                                    chi_tiet_bao_gia  @relation(fields: [chi_tiet_bao_gia_id, bao_gia_id], references: [chi_tiet_bao_gia_id, bao_gia_id], onUpdate: NoAction)
+  co_hoi_dich_vu                                      co_hoi_dich_vu    @relation(fields: [co_hoi_id, khach_hang_id], references: [co_hoi_id, khach_hang_id], onUpdate: NoAction)
+  co_so                                               co_so             @relation(fields: [co_so_id], references: [co_so_id], onUpdate: NoAction)
+  khach_hang                                          khach_hang        @relation(fields: [khach_hang_id], references: [khach_hang_id], onUpdate: NoAction)
+  nhan_vien_ca_thuc_hien_nguoi_ban_giao_idTonhan_vien nhan_vien?        @relation("ca_thuc_hien_nguoi_ban_giao_idTonhan_vien", fields: [nguoi_ban_giao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_ca_thuc_hien_nguoi_tao_idTonhan_vien      nhan_vien?        @relation("ca_thuc_hien_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  lan_tham_kham                                       lan_tham_kham     @relation(fields: [tham_kham_id, co_hoi_id], references: [tham_kham_id, co_hoi_id], onUpdate: NoAction)
+  canh_bao_y_khoa                                     canh_bao_y_khoa[]
+  cham_soc_sau_ca                                     cham_soc_sau_ca[]
+  danh_gia                                            danh_gia[]
+  dong_y                                              dong_y[]
+  tai_lieu                                            tai_lieu[]
+
+  @@unique([ca_id, khach_hang_id])
+  @@index([bac_si_id])
+  @@index([bao_gia_id, co_hoi_id])
+  @@index([chi_tiet_bao_gia_id, bao_gia_id])
+  @@index([co_hoi_id, khach_hang_id])
+  @@index([co_so_id])
+  @@index([khach_hang_id])
+  @@index([nguoi_ban_giao_id])
+  @@index([nguoi_tao_id])
+  @@index([tham_kham_id, co_hoi_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model canh_bao_y_khoa {
+  canh_bao_id                                         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ca_id                                               String       @db.Uuid
+  thoi_diem_bao                                       DateTime     @default(now()) @db.Timestamptz(6)
+  mo_ta                                               String
+  muc_uu_tien                                         String       @default("cao")
+  bac_si_nhan_id                                      String?      @db.Uuid
+  thoi_diem_tiep_nhan                                 DateTime?    @db.Timestamptz(6)
+  huong_xu_ly                                         String?
+  trang_thai                                          String       @default("moi")
+  thoi_diem_dong                                      DateTime?    @db.Timestamptz(6)
+  ngay_tao                                            DateTime     @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                       DateTime     @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                        String?      @db.Uuid
+  nhan_vien_canh_bao_y_khoa_bac_si_nhan_idTonhan_vien nhan_vien?   @relation("canh_bao_y_khoa_bac_si_nhan_idTonhan_vien", fields: [bac_si_nhan_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  ca_thuc_hien                                        ca_thuc_hien @relation(fields: [ca_id], references: [ca_id], onUpdate: NoAction)
+  nhan_vien_canh_bao_y_khoa_nguoi_tao_idTonhan_vien   nhan_vien?   @relation("canh_bao_y_khoa_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([bac_si_nhan_id])
+  @@index([ca_id])
+  @@index([nguoi_tao_id])
+  @@index([bac_si_nhan_id, thoi_diem_bao], map: "idx_canh_bao_mo", where: raw("(trang_thai <> 'da_dong'::text)"))
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cham_soc_sau_ca {
+  cham_soc_id                                             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ca_id                                                   String        @db.Uuid
+  moc_id                                                  String?       @db.Uuid
+  han_thuc_hien                                           DateTime      @db.Timestamptz(6)
+  nguoi_phu_trach_id                                      String?       @db.Uuid
+  trang_thai                                              String        @default("cho_thuc_hien")
+  thoi_diem_thuc_te                                       DateTime?     @db.Timestamptz(6)
+  phan_hoi                                                String?
+  huong_xu_ly                                             String?
+  ngay_tao                                                DateTime      @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                           DateTime      @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                            String?       @db.Uuid
+  ca_thuc_hien                                            ca_thuc_hien  @relation(fields: [ca_id], references: [ca_id], onUpdate: NoAction)
+  moc_cham_soc                                            moc_cham_soc? @relation(fields: [moc_id], references: [moc_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_cham_soc_sau_ca_nguoi_phu_trach_idTonhan_vien nhan_vien?    @relation("cham_soc_sau_ca_nguoi_phu_trach_idTonhan_vien", fields: [nguoi_phu_trach_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_cham_soc_sau_ca_nguoi_tao_idTonhan_vien       nhan_vien?    @relation("cham_soc_sau_ca_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([ca_id, moc_id])
+  @@index([ca_id])
+  @@index([moc_id])
+  @@index([nguoi_phu_trach_id])
+  @@index([nguoi_tao_id])
+  @@index([nguoi_phu_trach_id, han_thuc_hien], map: "idx_cham_soc_den_han", where: raw("(trang_thai = 'cho_thuc_hien'::text)"))
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model chi_tiet_bao_gia {
+  chi_tiet_bao_gia_id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bao_gia_id                         String         @db.Uuid
+  dich_vu_id                         String         @db.Uuid
+  ten_hang_muc_tai_thoi_diem_bao_gia String
+  so_luong                           Int            @default(1)
+  don_gia                            Decimal        @db.Decimal(18, 0)
+  giam_gia                           Decimal        @default(0) @db.Decimal(18, 0)
+  thanh_tien                         Decimal?       @default(dbgenerated("(((so_luong)::numeric * don_gia) - giam_gia)")) @db.Decimal(18, 0)
+  ngay_tao                           DateTime       @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                      DateTime       @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                       String?        @db.Uuid
+  ca_thuc_hien                       ca_thuc_hien[]
+  bao_gia                            bao_gia        @relation(fields: [bao_gia_id], references: [bao_gia_id], onUpdate: NoAction)
+  dich_vu                            dich_vu        @relation(fields: [dich_vu_id], references: [dich_vu_id], onUpdate: NoAction)
+  nhan_vien                          nhan_vien?     @relation(fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([chi_tiet_bao_gia_id, bao_gia_id])
+  @@index([bao_gia_id])
+  @@index([dich_vu_id])
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model co_hoi_dich_vu {
+  co_hoi_id                                          String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  khach_hang_id                                      String               @db.Uuid
+  dich_vu_id                                         String               @db.Uuid
+  nguon_id                                           String?              @db.Uuid
+  tu_van_vien_id                                     String?              @db.Uuid
+  mong_muon                                          String?
+  ngan_sach_tu                                       Decimal?             @db.Decimal(18, 0)
+  ngan_sach_den                                      Decimal?             @db.Decimal(18, 0)
+  thoi_diem_du_kien                                  DateTime?            @db.Date
+  trang_thai                                         String               @default("moi")
+  ly_do_chua_chot                                    String?
+  ngay_tiep_nhan                                     DateTime             @default(now()) @db.Timestamptz(6)
+  ngay_chot                                          DateTime?            @db.Timestamptz(6)
+  ngay_dong                                          DateTime?            @db.Timestamptz(6)
+  ngay_tao                                           DateTime             @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                      DateTime             @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                       String?              @db.Uuid
+  bao_gia                                            bao_gia?
+  ca_thuc_hien                                       ca_thuc_hien[]
+  dich_vu                                            dich_vu              @relation(fields: [dich_vu_id], references: [dich_vu_id], onUpdate: NoAction)
+  khach_hang                                         khach_hang           @relation(fields: [khach_hang_id], references: [khach_hang_id], onUpdate: NoAction)
+  nhan_vien_co_hoi_dich_vu_nguoi_tao_idTonhan_vien   nhan_vien?           @relation("co_hoi_dich_vu_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nguon_khach                                        nguon_khach?         @relation(fields: [nguon_id], references: [nguon_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_co_hoi_dich_vu_tu_van_vien_idTonhan_vien nhan_vien?           @relation("co_hoi_dich_vu_tu_van_vien_idTonhan_vien", fields: [tu_van_vien_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  cong_viec                                          cong_viec[]
+  lan_tham_kham                                      lan_tham_kham[]
+  lich_hen                                           lich_hen[]
+  lich_su_trang_thai                                 lich_su_trang_thai[]
+  tuong_tac                                          tuong_tac[]
+
+  @@unique([co_hoi_id, khach_hang_id])
+  @@index([dich_vu_id])
+  @@index([khach_hang_id])
+  @@index([nguoi_tao_id])
+  @@index([nguon_id])
+  @@index([tu_van_vien_id])
+  @@index([tu_van_vien_id, trang_thai, ngay_tiep_nhan], map: "idx_co_hoi_phu_trach")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model co_so {
+  co_so_id                                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ten_co_so                               String
+  dia_chi                                 String?
+  so_dien_thoai                           String?
+  mui_gio                                 String         @default("Asia/Ho_Chi_Minh")
+  gio_hoat_dong                           Json           @default("{}")
+  ngay_tao                                DateTime       @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                           DateTime       @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                            String?        @db.Uuid
+  ca_thuc_hien                            ca_thuc_hien[]
+  nhan_vien_co_so_nguoi_tao_idTonhan_vien nhan_vien?     @relation("co_so_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  lich_hen                                lich_hen[]
+  nhan_vien_nhan_vien_co_so_idToco_so     nhan_vien[]    @relation("nhan_vien_co_so_idToco_so")
+
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cong_viec {
+  cong_viec_id                                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  khach_hang_id                                     String          @db.Uuid
+  co_hoi_id                                         String?         @db.Uuid
+  lich_hen_id                                       String?         @db.Uuid
+  loai_cong_viec                                    String
+  noi_dung                                          String
+  nguoi_phu_trach_id                                String?         @db.Uuid
+  han_hoan_thanh                                    DateTime        @db.Timestamptz(6)
+  muc_uu_tien                                       String          @default("binh_thuong")
+  trang_thai                                        String          @default("cho_lam")
+  hoan_thanh_luc                                    DateTime?       @db.Timestamptz(6)
+  ket_qua                                           String?
+  khoa_chong_trung                                  String?         @unique
+  ngay_tao                                          DateTime        @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                     DateTime        @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                      String?         @db.Uuid
+  co_hoi_dich_vu                                    co_hoi_dich_vu? @relation(fields: [co_hoi_id, khach_hang_id], references: [co_hoi_id, khach_hang_id], onUpdate: NoAction)
+  khach_hang                                        khach_hang      @relation(fields: [khach_hang_id], references: [khach_hang_id], onUpdate: NoAction)
+  lich_hen                                          lich_hen?       @relation(fields: [lich_hen_id, co_hoi_id, khach_hang_id], references: [lich_hen_id, co_hoi_id, khach_hang_id], onUpdate: NoAction)
+  nhan_vien_cong_viec_nguoi_phu_trach_idTonhan_vien nhan_vien?      @relation("cong_viec_nguoi_phu_trach_idTonhan_vien", fields: [nguoi_phu_trach_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_cong_viec_nguoi_tao_idTonhan_vien       nhan_vien?      @relation("cong_viec_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([co_hoi_id, khach_hang_id])
+  @@index([khach_hang_id])
+  @@index([lich_hen_id])
+  @@index([nguoi_phu_trach_id])
+  @@index([nguoi_tao_id])
+  @@index([nguoi_phu_trach_id, han_hoan_thanh], map: "idx_viec_den_han", where: raw("(trang_thai = ANY (ARRAY['cho_lam'::text, 'dang_lam'::text]))"))
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model danh_gia {
+  danh_gia_id                                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  khach_hang_id                                String        @db.Uuid
+  ca_id                                        String?       @unique(map: "uq_danh_gia_ca", where: raw("(ca_id IS NOT NULL)")) @db.Uuid
+  ngay_khao_sat                                DateTime      @default(dbgenerated("((now() AT TIME ZONE 'Asia/Ho_Chi_Minh'::text))::date")) @db.Date
+  diem                                         Int
+  thang_diem                                   Int           @default(5)
+  nhan_xet                                     String?
+  nguoi_xu_ly_id                               String?       @db.Uuid
+  ngay_tao                                     DateTime      @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                DateTime      @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                 String?       @db.Uuid
+  ca_thuc_hien                                 ca_thuc_hien? @relation(fields: [ca_id, khach_hang_id], references: [ca_id, khach_hang_id], onUpdate: NoAction)
+  khach_hang                                   khach_hang    @relation(fields: [khach_hang_id], references: [khach_hang_id], onUpdate: NoAction)
+  nhan_vien_danh_gia_nguoi_tao_idTonhan_vien   nhan_vien?    @relation("danh_gia_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_danh_gia_nguoi_xu_ly_idTonhan_vien nhan_vien?    @relation("danh_gia_nguoi_xu_ly_idTonhan_vien", fields: [nguoi_xu_ly_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([ca_id, khach_hang_id])
+  @@index([khach_hang_id])
+  @@index([nguoi_tao_id])
+  @@index([nguoi_xu_ly_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model dich_vu {
+  dich_vu_id         String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ten_dich_vu        String
+  nhom_dich_vu       String
+  mo_ta              String?
+  gia_tham_khao_tu   Decimal?           @db.Decimal(18, 0)
+  gia_tham_khao_den  Decimal?           @db.Decimal(18, 0)
+  thoi_luong_du_kien Int?
+  dang_hoat_dong     Boolean            @default(true)
+  ngay_tao           DateTime           @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat      DateTime           @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id       String?            @db.Uuid
+  chi_tiet_bao_gia   chi_tiet_bao_gia[]
+  co_hoi_dich_vu     co_hoi_dich_vu[]
+  nhan_vien          nhan_vien?         @relation(fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  mau_cham_soc       mau_cham_soc?
+
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model dong_y {
+  dong_y_id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  khach_hang_id      String        @db.Uuid
+  ca_id              String?       @db.Uuid
+  muc_dich           String
+  trang_thai         String        @default("dong_y")
+  phien_ban_noi_dung String
+  thoi_diem_dong_y   DateTime      @default(now()) @db.Timestamptz(6)
+  thoi_diem_rut_lai  DateTime?     @db.Timestamptz(6)
+  bang_chung         String
+  ngay_tao           DateTime      @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat      DateTime      @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id       String?       @db.Uuid
+  ca_thuc_hien       ca_thuc_hien? @relation(fields: [ca_id, khach_hang_id], references: [ca_id, khach_hang_id], onUpdate: NoAction)
+  khach_hang         khach_hang    @relation(fields: [khach_hang_id], references: [khach_hang_id], onUpdate: NoAction)
+  nhan_vien          nhan_vien?    @relation(fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([ca_id, khach_hang_id])
+  @@index([khach_hang_id])
+  @@index([nguoi_tao_id])
+  @@index([khach_hang_id, muc_dich, thoi_diem_dong_y(sort: Desc)], map: "idx_dong_y_muc_dich")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model giao_dich_sepay {
+  sepay_id            String      @id
+  so_tien             Decimal     @db.Decimal(18, 0)
+  noi_dung            String?
+  ma_tham_chieu       String?
+  ngan_hang           String?
+  so_tai_khoan        String?
+  thoi_diem_ngan_hang DateTime?   @db.Timestamptz(6)
+  ket_qua             String
+  ly_do               String?
+  thanh_toan_id       String?     @db.Uuid
+  ghi_chu_xu_ly       String?
+  nguoi_xu_ly_id      String?     @db.Uuid
+  xu_ly_luc           DateTime?   @db.Timestamptz(6)
+  ngay_tao            DateTime    @default(now()) @db.Timestamptz(6)
+  nhan_vien           nhan_vien?  @relation(fields: [nguoi_xu_ly_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  thanh_toan          thanh_toan? @relation(fields: [thanh_toan_id], references: [thanh_toan_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([ket_qua, ngay_tao(sort: Desc)], map: "ix_giao_dich_sepay_ket_qua")
+  @@index([thanh_toan_id], map: "ix_giao_dich_sepay_thanh_toan")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model khach_hang {
+  khach_hang_id                                          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ho_ten                                                 String
+  ngay_sinh                                              DateTime?        @db.Date
+  so_dien_thoai                                          String?
+  so_dien_thoai_chuan                                    String?          @default(dbgenerated("hana_chuan_hoa_sdt(so_dien_thoai)"))
+  email                                                  String?
+  zalo_id                                                String?
+  khu_vuc                                                String?
+  kenh_lien_he_uu_tien                                   String?
+  khung_gio_lien_he                                      String?
+  nguon_dau_tien_id                                      String?          @db.Uuid
+  nhan_vien_phu_trach_id                                 String?          @db.Uuid
+  khach_gioi_thieu_id                                    String?          @db.Uuid
+  ngay_tao                                               DateTime         @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                          DateTime         @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                           String?          @db.Uuid
+  ca_thuc_hien                                           ca_thuc_hien[]
+  co_hoi_dich_vu                                         co_hoi_dich_vu[]
+  cong_viec                                              cong_viec[]
+  danh_gia                                               danh_gia[]
+  dong_y                                                 dong_y[]
+  khach_hang                                             khach_hang?      @relation("khach_hangTokhach_hang", fields: [khach_gioi_thieu_id], references: [khach_hang_id], onDelete: Restrict, onUpdate: NoAction)
+  other_khach_hang                                       khach_hang[]     @relation("khach_hangTokhach_hang")
+  nhan_vien_khach_hang_nguoi_tao_idTonhan_vien           nhan_vien?       @relation("khach_hang_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nguon_khach                                            nguon_khach?     @relation(fields: [nguon_dau_tien_id], references: [nguon_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_khach_hang_nhan_vien_phu_trach_idTonhan_vien nhan_vien?       @relation("khach_hang_nhan_vien_phu_trach_idTonhan_vien", fields: [nhan_vien_phu_trach_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  lan_tham_kham                                          lan_tham_kham[]
+  lich_hen                                               lich_hen[]
+  tai_lieu                                               tai_lieu[]
+  tuong_tac                                              tuong_tac[]
+
+  @@index([so_dien_thoai_chuan], map: "idx_khach_sdt")
+  @@index([khach_gioi_thieu_id])
+  @@index([nguoi_tao_id])
+  @@index([nguon_dau_tien_id])
+  @@index([nhan_vien_phu_trach_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ky_thanh_toan {
+  ky_id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bao_gia_id          String               @db.Uuid
+  so_ky               Int
+  ngay_den_han        DateTime             @db.Date
+  so_tien_phai_tra    Decimal              @db.Decimal(18, 0)
+  ben_thu_tien        String               @default("hana")
+  doi_tac             String?
+  ma_hop_dong_doi_tac String?
+  ngay_tao            DateTime             @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat       DateTime             @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id        String?              @db.Uuid
+  bao_gia             bao_gia              @relation(fields: [bao_gia_id], references: [bao_gia_id], onUpdate: NoAction)
+  nhan_vien           nhan_vien?           @relation(fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  phan_bo_thanh_toan  phan_bo_thanh_toan[]
+
+  @@unique([bao_gia_id, so_ky])
+  @@unique([ky_id, bao_gia_id])
+  @@index([bao_gia_id])
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model lan_tham_kham {
+  tham_kham_id                                    String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  khach_hang_id                                   String         @db.Uuid
+  co_hoi_id                                       String         @db.Uuid
+  lich_hen_id                                     String?        @db.Uuid
+  bac_si_id                                       String         @db.Uuid
+  thoi_diem_kham                                  DateTime       @default(now()) @db.Timestamptz(6)
+  tien_su                                         String?
+  di_ung                                          String?
+  ket_qua_tham_kham                               String?
+  phuong_an_de_xuat                               String?
+  ket_luan_dieu_kien                              String?
+  ma_ho_so_y_khoa_ngoai                           String?
+  ngay_tao                                        DateTime       @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                   DateTime       @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                    String?        @db.Uuid
+  bao_gia                                         bao_gia[]
+  ca_thuc_hien                                    ca_thuc_hien[]
+  nhan_vien_lan_tham_kham_bac_si_idTonhan_vien    nhan_vien      @relation("lan_tham_kham_bac_si_idTonhan_vien", fields: [bac_si_id], references: [nhan_vien_id], onUpdate: NoAction)
+  co_hoi_dich_vu                                  co_hoi_dich_vu @relation(fields: [co_hoi_id, khach_hang_id], references: [co_hoi_id, khach_hang_id], onUpdate: NoAction)
+  khach_hang                                      khach_hang     @relation(fields: [khach_hang_id], references: [khach_hang_id], onUpdate: NoAction)
+  lich_hen                                        lich_hen?      @relation(fields: [lich_hen_id, co_hoi_id, khach_hang_id], references: [lich_hen_id, co_hoi_id, khach_hang_id], onUpdate: NoAction)
+  nhan_vien_lan_tham_kham_nguoi_tao_idTonhan_vien nhan_vien?     @relation("lan_tham_kham_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([tham_kham_id, co_hoi_id])
+  @@index([bac_si_id])
+  @@index([co_hoi_id, khach_hang_id])
+  @@index([khach_hang_id])
+  @@index([lich_hen_id])
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains exclusion constraints and requires additional setup for migrations. Visit https://pris.ly/d/exclusion-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model lich_hen {
+  lich_hen_id                                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  khach_hang_id                              String          @db.Uuid
+  co_hoi_id                                  String          @db.Uuid
+  co_so_id                                   String          @db.Uuid
+  bac_si_id                                  String?         @db.Uuid
+  phong                                      String?
+  loai_lich_hen                              String          @default("kham")
+  bat_dau                                    DateTime        @db.Timestamptz(6)
+  ket_thuc                                   DateTime        @db.Timestamptz(6)
+  trang_thai                                 String          @default("cho_xac_nhan")
+  thoi_diem_den                              DateTime?       @db.Timestamptz(6)
+  ly_do_huy                                  String?
+  lich_hen_truoc_id                          String?         @db.Uuid
+  ngay_tao                                   DateTime        @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                              DateTime        @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                               String?         @db.Uuid
+  cong_viec                                  cong_viec[]
+  lan_tham_kham                              lan_tham_kham[]
+  nhan_vien_lich_hen_bac_si_idTonhan_vien    nhan_vien?      @relation("lich_hen_bac_si_idTonhan_vien", fields: [bac_si_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  co_hoi_dich_vu                             co_hoi_dich_vu  @relation(fields: [co_hoi_id, khach_hang_id], references: [co_hoi_id, khach_hang_id], onUpdate: NoAction)
+  co_so                                      co_so           @relation(fields: [co_so_id], references: [co_so_id], onUpdate: NoAction)
+  khach_hang                                 khach_hang      @relation(fields: [khach_hang_id], references: [khach_hang_id], onUpdate: NoAction)
+  lich_hen                                   lich_hen?       @relation("lich_henTolich_hen", fields: [lich_hen_truoc_id, co_hoi_id, khach_hang_id], references: [lich_hen_id, co_hoi_id, khach_hang_id], onUpdate: NoAction)
+  other_lich_hen                             lich_hen[]      @relation("lich_henTolich_hen")
+  nhan_vien_lich_hen_nguoi_tao_idTonhan_vien nhan_vien?      @relation("lich_hen_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([lich_hen_id, co_hoi_id, khach_hang_id])
+  @@index([bac_si_id, bat_dau, ket_thuc], map: "idx_lich_bac_si")
+  @@index([co_so_id, phong, bat_dau], map: "idx_lich_phong")
+  @@index([bac_si_id])
+  @@index([co_hoi_id, khach_hang_id])
+  @@index([co_so_id])
+  @@index([khach_hang_id])
+  @@index([lich_hen_truoc_id])
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model lich_su_trang_thai {
+  lich_su_id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  co_hoi_id         String         @db.Uuid
+  trang_thai_cu     String?
+  trang_thai_moi    String
+  thoi_diem         DateTime       @default(now()) @db.Timestamptz(6)
+  nguoi_thay_doi_id String?        @db.Uuid
+  ly_do             String?
+  co_hoi_dich_vu    co_hoi_dich_vu @relation(fields: [co_hoi_id], references: [co_hoi_id], onUpdate: NoAction)
+  nhan_vien         nhan_vien?     @relation(fields: [nguoi_thay_doi_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([co_hoi_id])
+  @@index([nguoi_thay_doi_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mau_cham_soc {
+  mau_id                                           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  dich_vu_id                                       String         @unique(map: "uq_mau_cham_soc_da_duyet", where: raw("(trang_thai = 'da_duyet'::text)")) @db.Uuid
+  phien_ban                                        Int            @default(1)
+  nguoi_duyet_id                                   String?        @db.Uuid
+  ngay_duyet                                       DateTime?      @db.Timestamptz(6)
+  trang_thai                                       String         @default("nhap")
+  ngay_tao                                         DateTime       @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                    DateTime       @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                     String?        @db.Uuid
+  dich_vu                                          dich_vu        @relation(fields: [dich_vu_id], references: [dich_vu_id], onUpdate: NoAction)
+  nhan_vien_mau_cham_soc_nguoi_duyet_idTonhan_vien nhan_vien?     @relation("mau_cham_soc_nguoi_duyet_idTonhan_vien", fields: [nguoi_duyet_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_mau_cham_soc_nguoi_tao_idTonhan_vien   nhan_vien?     @relation("mau_cham_soc_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  moc_cham_soc                                     moc_cham_soc[]
+
+  @@unique([dich_vu_id, phien_ban])
+  @@index([dich_vu_id])
+  @@index([nguoi_duyet_id])
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model moc_cham_soc {
+  moc_id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mau_id                  String            @db.Uuid
+  khoang_thoi_gian_sau_ca Int
+  don_vi                  String            @default("ngay")
+  noi_dung                String
+  loai_lien_he            String
+  vai_tro_phu_trach       String?           @db.Uuid
+  ngay_tao                DateTime          @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat           DateTime          @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id            String?           @db.Uuid
+  cham_soc_sau_ca         cham_soc_sau_ca[]
+  mau_cham_soc            mau_cham_soc      @relation(fields: [mau_id], references: [mau_id], onUpdate: NoAction)
+  nhan_vien               nhan_vien?        @relation(fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  vai_tro                 vai_tro?          @relation(fields: [vai_tro_phu_trach], references: [vai_tro_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([mau_id])
+  @@index([nguoi_tao_id])
+  @@index([vai_tro_phu_trach])
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model nguon_khach {
+  nguon_id       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kenh           String
+  ten_chien_dich String?
+  ma_chien_dich  String?
+  dang_hoat_dong Boolean          @default(true)
+  ngay_tao       DateTime         @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat  DateTime         @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id   String?          @db.Uuid
+  co_hoi_dich_vu co_hoi_dich_vu[]
+  khach_hang     khach_hang[]
+  nhan_vien      nhan_vien?       @relation(fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model nhan_vien {
+  nhan_vien_id                                                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  auth_user_id                                                  String?              @unique @db.Uuid
+  ho_ten                                                        String
+  bo_phan                                                       String?
+  chuc_danh                                                     String?
+  co_so_id                                                      String?              @db.Uuid
+  trang_thai_tai_khoan                                          String               @default("hoat_dong")
+  ngay_tao                                                      DateTime             @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                                 DateTime             @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                                  String?              @db.Uuid
+  bao_gia_bao_gia_nguoi_lap_idTonhan_vien                       bao_gia[]            @relation("bao_gia_nguoi_lap_idTonhan_vien")
+  bao_gia_bao_gia_nguoi_tao_idTonhan_vien                       bao_gia[]            @relation("bao_gia_nguoi_tao_idTonhan_vien")
+  ca_thuc_hien_ca_thuc_hien_bac_si_idTonhan_vien                ca_thuc_hien[]       @relation("ca_thuc_hien_bac_si_idTonhan_vien")
+  ca_thuc_hien_ca_thuc_hien_nguoi_ban_giao_idTonhan_vien        ca_thuc_hien[]       @relation("ca_thuc_hien_nguoi_ban_giao_idTonhan_vien")
+  ca_thuc_hien_ca_thuc_hien_nguoi_tao_idTonhan_vien             ca_thuc_hien[]       @relation("ca_thuc_hien_nguoi_tao_idTonhan_vien")
+  canh_bao_y_khoa_canh_bao_y_khoa_bac_si_nhan_idTonhan_vien     canh_bao_y_khoa[]    @relation("canh_bao_y_khoa_bac_si_nhan_idTonhan_vien")
+  canh_bao_y_khoa_canh_bao_y_khoa_nguoi_tao_idTonhan_vien       canh_bao_y_khoa[]    @relation("canh_bao_y_khoa_nguoi_tao_idTonhan_vien")
+  cham_soc_sau_ca_cham_soc_sau_ca_nguoi_phu_trach_idTonhan_vien cham_soc_sau_ca[]    @relation("cham_soc_sau_ca_nguoi_phu_trach_idTonhan_vien")
+  cham_soc_sau_ca_cham_soc_sau_ca_nguoi_tao_idTonhan_vien       cham_soc_sau_ca[]    @relation("cham_soc_sau_ca_nguoi_tao_idTonhan_vien")
+  chi_tiet_bao_gia                                              chi_tiet_bao_gia[]
+  co_hoi_dich_vu_co_hoi_dich_vu_nguoi_tao_idTonhan_vien         co_hoi_dich_vu[]     @relation("co_hoi_dich_vu_nguoi_tao_idTonhan_vien")
+  co_hoi_dich_vu_co_hoi_dich_vu_tu_van_vien_idTonhan_vien       co_hoi_dich_vu[]     @relation("co_hoi_dich_vu_tu_van_vien_idTonhan_vien")
+  co_so_co_so_nguoi_tao_idTonhan_vien                           co_so[]              @relation("co_so_nguoi_tao_idTonhan_vien")
+  cong_viec_cong_viec_nguoi_phu_trach_idTonhan_vien             cong_viec[]          @relation("cong_viec_nguoi_phu_trach_idTonhan_vien")
+  cong_viec_cong_viec_nguoi_tao_idTonhan_vien                   cong_viec[]          @relation("cong_viec_nguoi_tao_idTonhan_vien")
+  danh_gia_danh_gia_nguoi_tao_idTonhan_vien                     danh_gia[]           @relation("danh_gia_nguoi_tao_idTonhan_vien")
+  danh_gia_danh_gia_nguoi_xu_ly_idTonhan_vien                   danh_gia[]           @relation("danh_gia_nguoi_xu_ly_idTonhan_vien")
+  dich_vu                                                       dich_vu[]
+  dong_y                                                        dong_y[]
+  giao_dich_sepay                                               giao_dich_sepay[]
+  khach_hang_khach_hang_nguoi_tao_idTonhan_vien                 khach_hang[]         @relation("khach_hang_nguoi_tao_idTonhan_vien")
+  khach_hang_khach_hang_nhan_vien_phu_trach_idTonhan_vien       khach_hang[]         @relation("khach_hang_nhan_vien_phu_trach_idTonhan_vien")
+  ky_thanh_toan                                                 ky_thanh_toan[]
+  lan_tham_kham_lan_tham_kham_bac_si_idTonhan_vien              lan_tham_kham[]      @relation("lan_tham_kham_bac_si_idTonhan_vien")
+  lan_tham_kham_lan_tham_kham_nguoi_tao_idTonhan_vien           lan_tham_kham[]      @relation("lan_tham_kham_nguoi_tao_idTonhan_vien")
+  lich_hen_lich_hen_bac_si_idTonhan_vien                        lich_hen[]           @relation("lich_hen_bac_si_idTonhan_vien")
+  lich_hen_lich_hen_nguoi_tao_idTonhan_vien                     lich_hen[]           @relation("lich_hen_nguoi_tao_idTonhan_vien")
+  lich_su_trang_thai                                            lich_su_trang_thai[]
+  mau_cham_soc_mau_cham_soc_nguoi_duyet_idTonhan_vien           mau_cham_soc[]       @relation("mau_cham_soc_nguoi_duyet_idTonhan_vien")
+  mau_cham_soc_mau_cham_soc_nguoi_tao_idTonhan_vien             mau_cham_soc[]       @relation("mau_cham_soc_nguoi_tao_idTonhan_vien")
+  moc_cham_soc                                                  moc_cham_soc[]
+  nguon_khach                                                   nguon_khach[]
+  users                                                         users?               @relation(fields: [auth_user_id], references: [id], onUpdate: NoAction)
+  co_so_nhan_vien_co_so_idToco_so                               co_so?               @relation("nhan_vien_co_so_idToco_so", fields: [co_so_id], references: [co_so_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien                                                     nhan_vien?           @relation("nhan_vienTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  other_nhan_vien                                               nhan_vien[]          @relation("nhan_vienTonhan_vien")
+  nhan_vien_vai_tro_nhan_vien_vai_tro_nguoi_tao_idTonhan_vien   nhan_vien_vai_tro[]  @relation("nhan_vien_vai_tro_nguoi_tao_idTonhan_vien")
+  nhan_vien_vai_tro_nhan_vien_vai_tro_nhan_vien_idTonhan_vien   nhan_vien_vai_tro[]  @relation("nhan_vien_vai_tro_nhan_vien_idTonhan_vien")
+  nhat_ky_truy_cap                                              nhat_ky_truy_cap[]
+  phan_bo_thanh_toan                                            phan_bo_thanh_toan[]
+  quyen_vai_tro                                                 quyen_vai_tro[]
+  tai_lieu_tai_lieu_nguoi_tai_idTonhan_vien                     tai_lieu[]           @relation("tai_lieu_nguoi_tai_idTonhan_vien")
+  tai_lieu_tai_lieu_nguoi_tao_idTonhan_vien                     tai_lieu[]           @relation("tai_lieu_nguoi_tao_idTonhan_vien")
+  thanh_toan_thanh_toan_nguoi_tao_idTonhan_vien                 thanh_toan[]         @relation("thanh_toan_nguoi_tao_idTonhan_vien")
+  thanh_toan_thanh_toan_thu_ngan_idTonhan_vien                  thanh_toan[]         @relation("thanh_toan_thu_ngan_idTonhan_vien")
+  tuong_tac_tuong_tac_nguoi_tao_idTonhan_vien                   tuong_tac[]          @relation("tuong_tac_nguoi_tao_idTonhan_vien")
+  tuong_tac_tuong_tac_nhan_vien_idTonhan_vien                   tuong_tac[]          @relation("tuong_tac_nhan_vien_idTonhan_vien")
+  vai_tro                                                       vai_tro[]
+
+  @@index([auth_user_id])
+  @@index([co_so_id])
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model nhan_vien_vai_tro {
+  nhan_vien_id                                        String     @db.Uuid
+  vai_tro_id                                          String     @db.Uuid
+  ngay_tao                                            DateTime   @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                       DateTime   @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                        String?    @db.Uuid
+  nhan_vien_nhan_vien_vai_tro_nguoi_tao_idTonhan_vien nhan_vien? @relation("nhan_vien_vai_tro_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_nhan_vien_vai_tro_nhan_vien_idTonhan_vien nhan_vien  @relation("nhan_vien_vai_tro_nhan_vien_idTonhan_vien", fields: [nhan_vien_id], references: [nhan_vien_id], onUpdate: NoAction)
+  vai_tro                                             vai_tro    @relation(fields: [vai_tro_id], references: [vai_tro_id], onUpdate: NoAction)
+
+  @@id([nhan_vien_id, vai_tro_id])
+  @@index([nguoi_tao_id])
+  @@index([nhan_vien_id])
+  @@index([vai_tro_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model nhat_ky_truy_cap {
+  nhat_ky_id    String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nguoi_dung_id String?    @db.Uuid
+  doi_tuong     String
+  ma_ban_ghi    String
+  hanh_dong     String
+  thoi_diem     DateTime   @default(now()) @db.Timestamptz(6)
+  nhan_vien     nhan_vien? @relation(fields: [nguoi_dung_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([doi_tuong, ma_ban_ghi, thoi_diem], map: "idx_nhat_ky_doi_tuong")
+  @@index([nguoi_dung_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model phan_bo_thanh_toan {
+  thanh_toan_id   String        @db.Uuid
+  ky_id           String        @db.Uuid
+  bao_gia_id      String        @db.Uuid
+  so_tien_phan_bo Decimal       @db.Decimal(18, 0)
+  ngay_tao        DateTime      @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat   DateTime      @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id    String?       @db.Uuid
+  bao_gia         bao_gia       @relation(fields: [bao_gia_id], references: [bao_gia_id], onUpdate: NoAction)
+  ky_thanh_toan   ky_thanh_toan @relation(fields: [ky_id, bao_gia_id], references: [ky_id, bao_gia_id], onUpdate: NoAction)
+  nhan_vien       nhan_vien?    @relation(fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  thanh_toan      thanh_toan    @relation(fields: [thanh_toan_id, bao_gia_id], references: [thanh_toan_id, bao_gia_id], onUpdate: NoAction)
+
+  @@id([thanh_toan_id, ky_id])
+  @@index([bao_gia_id])
+  @@index([ky_id, bao_gia_id])
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model quyen_vai_tro {
+  vai_tro_id    String     @db.Uuid
+  doi_tuong     String
+  hanh_dong     String
+  pham_vi       String
+  ngay_tao      DateTime   @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat DateTime   @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id  String?    @db.Uuid
+  nhan_vien     nhan_vien? @relation(fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  vai_tro       vai_tro    @relation(fields: [vai_tro_id], references: [vai_tro_id], onUpdate: NoAction)
+
+  @@id([vai_tro_id, doi_tuong, hanh_dong, pham_vi])
+  @@index([nguoi_tao_id])
+  @@index([vai_tro_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tai_lieu {
+  tai_lieu_id                                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  khach_hang_id                              String        @db.Uuid
+  ca_id                                      String?       @db.Uuid
+  loai_tai_lieu                              String
+  vi_tri_luu_rieng_tu                        String
+  nguoi_tai_id                               String?       @db.Uuid
+  thoi_diem                                  DateTime      @default(now()) @db.Timestamptz(6)
+  muc_bao_mat                                String        @default("han_che")
+  muc_dich_su_dung                           String
+  ngay_tao                                   DateTime      @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                              DateTime      @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                               String?       @db.Uuid
+  ca_thuc_hien                               ca_thuc_hien? @relation(fields: [ca_id, khach_hang_id], references: [ca_id, khach_hang_id], onUpdate: NoAction)
+  khach_hang                                 khach_hang    @relation(fields: [khach_hang_id], references: [khach_hang_id], onUpdate: NoAction)
+  nhan_vien_tai_lieu_nguoi_tai_idTonhan_vien nhan_vien?    @relation("tai_lieu_nguoi_tai_idTonhan_vien", fields: [nguoi_tai_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_tai_lieu_nguoi_tao_idTonhan_vien nhan_vien?    @relation("tai_lieu_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([ca_id, khach_hang_id])
+  @@index([khach_hang_id])
+  @@index([nguoi_tai_id])
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model thanh_toan {
+  thanh_toan_id                                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bao_gia_id                                   String               @db.Uuid
+  loai_giao_dich                               String
+  so_tien                                      Decimal              @db.Decimal(18, 0)
+  phuong_thuc                                  String
+  trang_thai                                   String               @default("cho_xac_nhan")
+  thoi_diem                                    DateTime             @default(now()) @db.Timestamptz(6)
+  ma_giao_dich                                 String?
+  ben_cung_cap                                 String?
+  thu_ngan_id                                  String?              @db.Uuid
+  giao_dich_goc_id                             String?              @db.Uuid
+  ngay_tao                                     DateTime             @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                                DateTime             @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                 String?              @db.Uuid
+  ma_doi_soat                                  String?              @unique(map: "uq_thanh_toan_ma_doi_soat", where: raw("(ma_doi_soat IS NOT NULL)"))
+  giao_dich_sepay                              giao_dich_sepay[]
+  phan_bo_thanh_toan                           phan_bo_thanh_toan[]
+  bao_gia                                      bao_gia              @relation(fields: [bao_gia_id], references: [bao_gia_id], onUpdate: NoAction)
+  thanh_toan                                   thanh_toan?          @relation("thanh_toanTothanh_toan", fields: [giao_dich_goc_id, bao_gia_id], references: [thanh_toan_id, bao_gia_id], onUpdate: NoAction)
+  other_thanh_toan                             thanh_toan[]         @relation("thanh_toanTothanh_toan")
+  nhan_vien_thanh_toan_nguoi_tao_idTonhan_vien nhan_vien?           @relation("thanh_toan_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_thanh_toan_thu_ngan_idTonhan_vien  nhan_vien?           @relation("thanh_toan_thu_ngan_idTonhan_vien", fields: [thu_ngan_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([ben_cung_cap, ma_giao_dich])
+  @@unique([thanh_toan_id, bao_gia_id])
+  @@index([bao_gia_id])
+  @@index([giao_dich_goc_id, bao_gia_id])
+  @@index([nguoi_tao_id])
+  @@index([thu_ngan_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tuong_tac {
+  tuong_tac_id                                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  khach_hang_id                               String          @db.Uuid
+  co_hoi_id                                   String?         @db.Uuid
+  nhan_vien_id                                String?         @db.Uuid
+  kenh                                        String
+  chieu                                       String
+  thoi_diem                                   DateTime        @default(now()) @db.Timestamptz(6)
+  thoi_luong_giay                             Int?
+  noi_dung_tom_tat                            String?
+  ket_qua                                     String?
+  la_tu_dong                                  Boolean         @default(false)
+  he_thong_nguon                              String?
+  ma_su_kien_ngoai                            String?
+  ngay_tao                                    DateTime        @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat                               DateTime        @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id                                String?         @db.Uuid
+  co_hoi_dich_vu                              co_hoi_dich_vu? @relation(fields: [co_hoi_id, khach_hang_id], references: [co_hoi_id, khach_hang_id], onUpdate: NoAction)
+  khach_hang                                  khach_hang      @relation(fields: [khach_hang_id], references: [khach_hang_id], onUpdate: NoAction)
+  nhan_vien_tuong_tac_nguoi_tao_idTonhan_vien nhan_vien?      @relation("tuong_tac_nguoi_tao_idTonhan_vien", fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+  nhan_vien_tuong_tac_nhan_vien_idTonhan_vien nhan_vien?      @relation("tuong_tac_nhan_vien_idTonhan_vien", fields: [nhan_vien_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([he_thong_nguon, ma_su_kien_ngoai])
+  @@index([co_hoi_id, khach_hang_id])
+  @@index([khach_hang_id])
+  @@index([nguoi_tao_id])
+  @@index([nhan_vien_id])
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model vai_tro {
+  vai_tro_id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ma_vai_tro        String              @unique
+  ten_vai_tro       String
+  ngay_tao          DateTime            @default(now()) @db.Timestamptz(6)
+  ngay_cap_nhat     DateTime            @default(now()) @db.Timestamptz(6)
+  nguoi_tao_id      String?             @db.Uuid
+  moc_cham_soc      moc_cham_soc[]
+  nhan_vien_vai_tro nhan_vien_vai_tro[]
+  quyen_vai_tro     quyen_vai_tro[]
+  nhan_vien         nhan_vien?          @relation(fields: [nguoi_tao_id], references: [nhan_vien_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([nguoi_tao_id])
+  @@schema("public")
+}
+
+enum aal_level {
+  aal1
+  aal2
+  aal3
+
+  @@schema("auth")
+}
+
+enum code_challenge_method {
+  s256
+  plain
+
+  @@schema("auth")
+}
+
+enum factor_status {
+  unverified
+  verified
+
+  @@schema("auth")
+}
+
+enum factor_type {
+  totp
+  webauthn
+  phone
+  recovery_code
+
+  @@schema("auth")
+}
+
+enum oauth_authorization_status {
+  pending
+  approved
+  denied
+  expired
+
+  @@schema("auth")
+}
+
+enum oauth_client_type {
+  public
+  confidential
+
+  @@schema("auth")
+}
+
+enum oauth_registration_type {
+  dynamic
+  manual
+
+  @@schema("auth")
+}
+
+enum oauth_response_type {
+  code
+
+  @@schema("auth")
+}
+
+enum one_time_token_type {
+  confirmation_token
+  reauthentication_token
+  recovery_token
+  email_change_token_new
+  email_change_token_current
+  phone_change_token
+
+  @@schema("auth")
 }

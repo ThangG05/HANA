@@ -4,8 +4,13 @@ dist/
 .next/
 coverage/
 backend/src/generated/
-.env.*
 .env
+.env.*
 !.env.example
 *.log
 .DS_Store
+backend/db/migrations/*.sql
+backend/db/chuyen-project/*
+backend/prisma/schema.bak
+backend/prisma/schema.cu.prisma
+backend/prisma/schema.da-sua.prisma
