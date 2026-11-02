@@ -36,9 +36,13 @@ export function Truong({ nhan, children, ghiChu, rong }: { nhan: string; childre
   );
 }
 
-export function Loi({ children }: { children?: ReactNode }) {
+export function Loi({ children, thuLai }: { children?: ReactNode; thuLai?: () => void }) {
   if (!children) return null;
-  return <div className="alert alert-error" role="alert">{children}</div>;
+  return <div className="alert alert-error" role="alert"><span>{children}</span>{thuLai && <button type="button" className="btn btn-ghost btn-sm" onClick={thuLai}>Thử lại</button>}</div>;
+}
+
+export function DangTai({ soDong = 3 }: { soDong?: number }) {
+  return <div className="loading-lines" role="status" aria-label="Đang tải dữ liệu">{Array.from({ length: soDong }, (_, i) => <span key={i} />)}<span className="sr-only">Đang tải dữ liệu…</span></div>;
 }
 
 export function Trong({ children, hanhDong }: { children: ReactNode; hanhDong?: ReactNode }) {

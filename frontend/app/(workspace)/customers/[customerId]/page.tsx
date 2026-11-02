@@ -13,6 +13,7 @@ import { layDanhSachLich } from "@/src/features/appointments/api";
 import { BangLichHen } from "@/src/features/appointments/BangLichHen";
 import { layKhach } from "@/src/features/customers/api";
 import { CustomerFormDialog } from "@/src/features/customers/CustomerFormDialog";
+import { DongYPanel } from "@/src/features/consents/DongYPanel";
 import { layDanhSachTuongTac } from "@/src/features/interactions/api";
 import { DanhSachTuongTac } from "@/src/features/interactions/DanhSachTuongTac";
 import { TuongTacFormDialog } from "@/src/features/interactions/TuongTacFormDialog";
@@ -46,10 +47,27 @@ export default function CustomerDetail() {
         {can("co_hoi", "them") && <button className="btn" onClick={() => setTaoCoHoi(true)}>Tạo cơ hội</button>}
       </TieuDeTrang>
 
+      <div className="record-summary" id="tong-quan" aria-label="Tổng quan hồ sơ khách hàng">
+        <div><span>Cơ hội dịch vụ</span><b>{k.co_hoi?.length ?? 0}</b></div>
+        {lich.data && <div><span>Lịch hẹn</span><b>{lich.data.total}</b></div>}
+        {tt.data && <div><span>Lần liên hệ</span><b>{tt.data.total}</b></div>}
+        {viec.data && <div><span>Công việc</span><b>{viec.data.total}</b></div>}
+      </div>
+
+      <nav className="record-nav" aria-label="Các phần của hồ sơ khách hàng">
+        <a href="#tong-quan">Tổng quan</a>
+        {k.co_hoi && <a href="#co-hoi">Cơ hội</a>}
+        {lich.data && <a href="#lich-hen">Lịch hẹn</a>}
+        {tt.data && <a href="#lien-he">Tương tác</a>}
+        <a href="#thong-tin">Thông tin</a>
+        <a href="#dong-y">Đồng ý</a>
+        {viec.data && <a href="#cong-viec">Công việc</a>}
+      </nav>
+
       <div className="cols">
         <div className="stack">
           {k.co_hoi && (
-            <section className="panel">
+            <section className="panel" id="co-hoi">
               <div className="panel-head"><h2>Cơ hội dịch vụ</h2></div>
               {k.co_hoi.length === 0 ? (
                 <Trong>Khách chưa có cơ hội nào.</Trong>
@@ -69,13 +87,13 @@ export default function CustomerDetail() {
             </section>
           )}
           {lich.data && (
-            <section className="panel">
+            <section className="panel" id="lich-hen">
               <div className="panel-head"><h2>Lịch hẹn</h2></div>
               {lich.data.items.length === 0 ? <Trong>Chưa có lịch hẹn. Đặt lịch từ trang chi tiết cơ hội.</Trong> : <BangLichHen ds={lich.data.items} tai={lich.tai} hienKhach={false} />}
             </section>
           )}
           {tt.data && (
-            <section className="panel">
+            <section className="panel" id="lien-he">
               <div className="panel-head">
                 <h2>Lịch sử liên hệ</h2>
                 {can("tuong_tac", "them") && <button className="btn btn-ghost btn-sm" onClick={() => setTaoTT(true)}>Ghi nhận liên hệ</button>}
@@ -86,7 +104,8 @@ export default function CustomerDetail() {
         </div>
 
         <div className="stack">
-          <section className="panel">
+          <DongYPanel khachId={k.khach_hang_id} />
+          <section className="panel" id="thong-tin">
             <div className="panel-head"><h2>Thông tin</h2></div>
             <dl className="kv">
               <dt>Điện thoại</dt><dd>{k.so_dien_thoai ?? "—"}</dd>
@@ -100,7 +119,7 @@ export default function CustomerDetail() {
             </dl>
           </section>
           {viec.data && (
-            <section className="panel">
+            <section className="panel" id="cong-viec">
               <div className="panel-head">
                 <h2>Công việc</h2>
                 {can("cong_viec", "them") && <button className="btn btn-ghost btn-sm" onClick={() => setTaoViec(true)}>Thêm việc</button>}

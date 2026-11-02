@@ -1,5 +1,6 @@
 import { Type } from "class-transformer";
 import { IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength } from "class-validator";
+import { PaginationDto } from "../../../common/dto/pagination.dto.js";
 
 const PHUONG_THUC = ["tien_mat", "chuyen_khoan", "the"] as const;
 const TIEN_TOI_DA = 10_000_000_000;
@@ -24,4 +25,8 @@ export class TaoHoanTienDto {
   @IsIn(PHUONG_THUC) phuongThuc: (typeof PHUONG_THUC)[number];
   @IsOptional() @IsString() @MinLength(1) @MaxLength(100) maGiaoDich?: string;
   @IsOptional() @IsString() @MinLength(1) @MaxLength(100) benCungCap?: string;
+}
+
+export class TruyVanCongNoDto extends PaginationDto {
+  @IsOptional() @IsString() @MaxLength(100) q?: string;
 }

@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
 import { CurrentUser, DataScope } from "../../common/decorators/current-user.decorator.js";
 import { RequirePermission } from "../../common/decorators/require-permission.decorator.js";
 import type { AuthUser, PhamVi } from "../../common/types/auth-user.js";
-import { TaoHoanTienDto, TaoThuTienDto } from "./dto/payment.dto.js";
+import { TaoHoanTienDto, TaoThuTienDto, TruyVanCongNoDto } from "./dto/payment.dto.js";
 import { PaymentsService } from "./payments.service.js";
 
 @Controller()
@@ -12,6 +12,16 @@ export class PaymentsController {
   @Get("opportunities/:coHoiId/payments") @RequirePermission("thanh_toan", "xem")
   theoCoHoi(@CurrentUser() user: AuthUser, @DataScope() pv: PhamVi, @Param("coHoiId", ParseUUIDPipe) coHoiId: string) {
     return this.payments.theoCoHoi(user, pv, coHoiId);
+  }
+
+  @Get("payments/receivables") @RequirePermission("thanh_toan", "xem")
+  congNo(@CurrentUser() user: AuthUser, @DataScope() pv: PhamVi, @Query() q: TruyVanCongNoDto) {
+    return this.payments.danhSachCongNo(user, pv, q);
+  }
+
+  @Get("payments/pending") @RequirePermission("thanh_toan", "xem")
+  choXacNhan(@CurrentUser() user: AuthUser, @DataScope() pv: PhamVi, @Query() q: TruyVanCongNoDto) {
+    return this.payments.danhSachChoXacNhan(user, pv, q);
   }
 
   @Post("payments") @RequirePermission("thanh_toan", "them")

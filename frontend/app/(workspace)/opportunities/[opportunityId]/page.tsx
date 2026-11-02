@@ -59,6 +59,15 @@ export default function OpportunityDetail() {
         <Link className="btn btn-ghost" href={`/customers/${c.khach_hang_id}`}>Hồ sơ khách</Link>
       </TieuDeTrang>
 
+      <nav className="record-nav" aria-label="Quy trình dịch vụ">
+        {lich.data && <a href="#lich-hen">Lịch hẹn</a>}
+        {can("co_hoi", "xem") && <a href="#tham-kham">Thăm khám</a>}
+        {can("bao_gia", "xem") && <a href="#bao-gia">Báo giá</a>}
+        {can("ca_thuc_hien", "xem") && <a href="#ca-thuc-hien">Thực hiện</a>}
+        {can("thanh_toan", "xem") && <a href="#thanh-toan">Thanh toán</a>}
+        {can("co_hoi", "xem") && <a href="#cham-soc">Chăm sóc</a>}
+      </nav>
+
       <section className="panel">
         <HanhTrinh co={c} tai={() => void co.tai()} />
       </section>
@@ -66,7 +75,7 @@ export default function OpportunityDetail() {
       <div className="cols" style={{ marginTop: 16 }}>
         <div className="stack">
           {lich.data && (
-            <section className="panel">
+            <section className="panel" id="lich-hen">
               <div className="panel-head">
                 <h2>Lịch hẹn</h2>
                 {can("lich_hen", "them") && !ketThuc && <button className="btn btn-ghost btn-sm" onClick={() => setDatLich(true)}>Đặt lịch</button>}
@@ -74,11 +83,11 @@ export default function OpportunityDetail() {
               {lich.data.items.length === 0 ? <Trong>Chưa có lịch hẹn cho cơ hội này.</Trong> : <BangLichHen ds={lich.data.items} tai={() => { void lich.tai(); void co.tai(); }} hienKhach={false} />}
             </section>
           )}
-          {can("co_hoi", "xem") && <KhamPanel coHoiId={c.co_hoi_id} ketThuc={ketThuc} xong={() => void co.tai()} />}
-          {can("bao_gia", "xem") && <BaoGiaPanel coHoiId={c.co_hoi_id} ketThuc={ketThuc} xong={() => void co.tai()} />}
-          {can("ca_thuc_hien", "xem") && <CaPanel coHoiId={c.co_hoi_id} xong={() => void co.tai()} />}
-          {can("co_hoi", "xem") && <ChamSocPanel coHoiId={c.co_hoi_id} xong={() => void co.tai()} />}
-          {can("thanh_toan", "xem") && <ThanhToanPanel coHoiId={c.co_hoi_id} xong={() => void co.tai()} />}
+          {can("co_hoi", "xem") && <div id="tham-kham"><KhamPanel coHoiId={c.co_hoi_id} ketThuc={ketThuc} xong={() => void co.tai()} /></div>}
+          {can("bao_gia", "xem") && <div id="bao-gia"><BaoGiaPanel coHoiId={c.co_hoi_id} ketThuc={ketThuc} xong={() => void co.tai()} /></div>}
+          {can("ca_thuc_hien", "xem") && <div id="ca-thuc-hien"><CaPanel coHoiId={c.co_hoi_id} xong={() => void co.tai()} /></div>}
+          {can("co_hoi", "xem") && <div id="cham-soc"><ChamSocPanel coHoiId={c.co_hoi_id} xong={() => void co.tai()} /></div>}
+          {can("thanh_toan", "xem") && <div id="thanh-toan"><ThanhToanPanel coHoiId={c.co_hoi_id} xong={() => void co.tai()} /></div>}
           {viec.data && (
             <section className="panel">
               <div className="panel-head">

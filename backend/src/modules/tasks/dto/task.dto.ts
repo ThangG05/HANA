@@ -40,4 +40,8 @@ export class TruyVanCongViec extends PaginationDto {
   @IsOptional() @Transform(boolTuQuery) @IsBoolean() quaHan?: boolean;
   /** Chỉ việc của tôi. */
   @IsOptional() @Transform(boolTuQuery) @IsBoolean() cuaToi?: boolean;
+  @IsOptional() @Transform(boolTuQuery) @IsBoolean() chuaXong?: boolean;
+  /** Khoảng hạn công việc, ISO có timezone. Dùng để phân nhóm hôm nay/sắp tới trên server. */
+  @IsOptional() @IsDateString() hanTu?: string;
+  @IsOptional() @IsDateString() hanDen?: string;
 }

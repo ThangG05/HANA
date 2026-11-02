@@ -3,7 +3,7 @@ import { CurrentUser, DataScope } from "../../common/decorators/current-user.dec
 import { RequirePermission } from "../../common/decorators/require-permission.decorator.js";
 import type { AuthUser, PhamVi } from "../../common/types/auth-user.js";
 import { AppointmentsService } from "./appointments.service.js";
-import { DoiLichDto, DoiTrangThaiLichHenDto, TaoLichHenDto, TruyVanLichHen } from "./dto/appointment.dto.js";
+import { DoiLichDto, DoiTrangThaiLichHenDto, TaoLichHenDto, TruyVanLichHen, TruyVanTongQuanLich } from "./dto/appointment.dto.js";
 
 @Controller("appointments")
 export class AppointmentsController {
@@ -12,6 +12,11 @@ export class AppointmentsController {
   @Get() @RequirePermission("lich_hen", "xem")
   danhSach(@CurrentUser() user: AuthUser, @DataScope() pv: PhamVi, @Query() q: TruyVanLichHen) {
     return this.appointments.danhSach(user, pv, q);
+  }
+
+  @Get("day-summary") @RequirePermission("lich_hen", "xem")
+  tongQuanNgay(@CurrentUser() user: AuthUser, @DataScope() pv: PhamVi, @Query() q: TruyVanTongQuanLich) {
+    return this.appointments.tongQuanNgay(user, pv, q);
   }
 
   @Get(":id") @RequirePermission("lich_hen", "xem")

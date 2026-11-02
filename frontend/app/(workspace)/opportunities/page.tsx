@@ -7,7 +7,7 @@ import { khoangTien, ngay } from "@/src/lib/formatters";
 import { NHAN_CO_HOI } from "@/src/lib/labels";
 import { useApi } from "@/src/lib/use-api";
 import { TrangThaiCoHoi } from "@/src/components/tags";
-import { Loi, PhanTrang, TieuDeTrang, Trong } from "@/src/components/ui";
+import { DangTai, Loi, PhanTrang, TieuDeTrang, Trong } from "@/src/components/ui";
 import { layDanhSachCoHoi } from "@/src/features/opportunities/api";
 
 const CO_TRANG = 20;
@@ -26,24 +26,25 @@ function Noi() {
           <button key={k} className="chip" aria-pressed={tt === k} onClick={() => { setTt(k); setTrang(1); }}>{v}</button>
         ))}
       </div>
-      <Loi>{ds.loi}</Loi>
+      <Loi thuLai={() => void ds.tai()}>{ds.loi}</Loi>
+      {ds.dangTai && !ds.data && <DangTai soDong={5} />}
       {ds.data && ds.data.items.length === 0 ? (
         <Trong>{tt ? `Không có cơ hội nào ở giai đoạn “${NHAN_CO_HOI[tt]}”.` : "Chưa có cơ hội nào. Mở một khách hàng và bấm “Tạo cơ hội”."}</Trong>
       ) : (
         ds.data && (
           <>
             <div className="table-wrap">
-              <table>
+              <table className="mobile-card-table">
                 <thead><tr><th>Khách hàng</th><th>Dịch vụ</th><th>Giai đoạn</th><th>Tư vấn viên</th><th>Ngân sách</th><th>Tiếp nhận</th></tr></thead>
                 <tbody>
                   {ds.data.items.map((c) => (
                     <tr key={c.co_hoi_id}>
-                      <td><Link href={`/opportunities/${c.co_hoi_id}`}><b>{c.khach_hang?.ho_ten ?? "—"}</b></Link><span className="sub">{c.khach_hang?.so_dien_thoai}</span></td>
-                      <td>{c.dich_vu?.ten_dich_vu ?? "—"}<span className="sub">{c.dich_vu?.nhom_dich_vu}</span></td>
-                      <td><TrangThaiCoHoi v={c.trang_thai} /></td>
-                      <td>{c.tu_van_vien?.ho_ten ?? "Chưa giao"}</td>
-                      <td className="nowrap">{khoangTien(c.ngan_sach_tu, c.ngan_sach_den)}</td>
-                      <td className="nowrap">{ngay(c.ngay_tiep_nhan)}</td>
+                      <td data-label="Khách hàng"><Link href={`/opportunities/${c.co_hoi_id}`}><b>{c.khach_hang?.ho_ten ?? "—"}</b></Link><span className="sub">{c.khach_hang?.so_dien_thoai}</span></td>
+                      <td data-label="Dịch vụ">{c.dich_vu?.ten_dich_vu ?? "—"}<span className="sub">{c.dich_vu?.nhom_dich_vu}</span></td>
+                      <td data-label="Giai đoạn"><TrangThaiCoHoi v={c.trang_thai} /></td>
+                      <td data-label="Tư vấn viên">{c.tu_van_vien?.ho_ten ?? "Chưa giao"}</td>
+                      <td data-label="Ngân sách" className="nowrap">{khoangTien(c.ngan_sach_tu, c.ngan_sach_den)}</td>
+                      <td data-label="Tiếp nhận" className="nowrap">{ngay(c.ngay_tiep_nhan)}</td>
                     </tr>
                   ))}
                 </tbody>

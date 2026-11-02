@@ -204,6 +204,25 @@ export class OpportunitiesService {
         },
       });
       if (kq.count !== 1) throw new ConflictException("Trạng thái vừa được người khác thay đổi, hãy tải lại");
+      if (den === "can_nuoi_duong") {
+        const ngayVN = new Date(bayGio.getTime() + 7 * 3600_000).toISOString().slice(0, 10);
+        const moc = new Date(`${ngayVN}T09:00:00+07:00`);
+        for (const soNgay of [1, 3, 7, 14]) {
+          const han = new Date(moc.getTime() + soNgay * 86400_000);
+          await tx.cong_viec.create({ data: {
+            khach_hang_id: cu.khach_hang_id, co_hoi_id: id, loai_cong_viec: "goi_lai",
+            noi_dung: `Gọi theo dõi khách chưa chốt sau ${soNgay} ngày`,
+            nguoi_phu_trach_id: cu.tu_van_vien_id ?? user.id, han_hoan_thanh: han,
+            muc_uu_tien: "binh_thuong", khoa_chong_trung: `nuoi-duong:${id}:${bayGio.getTime()}:${soNgay}`,
+            nguoi_tao_id: user.id,
+          } });
+        }
+      } else if (["dang_tu_van", "da_hen", "da_chot", "ngung_cham_soc"].includes(den)) {
+        await tx.cong_viec.updateMany({ where: {
+          co_hoi_id: id, khoa_chong_trung: { startsWith: `nuoi-duong:${id}:` },
+          trang_thai: { in: ["cho_lam", "dang_lam"] },
+        }, data: { trang_thai: "huy", ket_qua: "Tự hủy khi cơ hội đổi trạng thái" } });
+      }
       return tx.co_hoi_dich_vu.findUniqueOrThrow({ where: { co_hoi_id: id } });
     });
   }
@@ -215,6 +234,10 @@ export class OpportunitiesService {
     if (cu.tu_van_vien_id === dto.tuVanVienId) return cu;
     return this.prisma.$transaction(async (tx) => {
       const moi = await tx.co_hoi_dich_vu.update({ where: { co_hoi_id: id }, data: { tu_van_vien_id: dto.tuVanVienId } });
+      await tx.cong_viec.updateMany({ where: {
+        co_hoi_id: id, khoa_chong_trung: { startsWith: `nuoi-duong:${id}:` },
+        trang_thai: { in: ["cho_lam", "dang_lam"] },
+      }, data: { nguoi_phu_trach_id: dto.tuVanVienId } });
       await this.audit.ghi(user.id, "co_hoi", id, "sua", tx);
       return moi;
     });

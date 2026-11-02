@@ -1,6 +1,5 @@
 const MUI_GIO = "Asia/Ho_Chi_Minh";
 
-const dtf = new Intl.DateTimeFormat("vi-VN", { timeZone: MUI_GIO, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
 const df = new Intl.DateTimeFormat("vi-VN", { timeZone: MUI_GIO, day: "2-digit", month: "2-digit", year: "numeric" });
 const tf = new Intl.DateTimeFormat("vi-VN", { timeZone: MUI_GIO, hour: "2-digit", minute: "2-digit", hour12: false });
 
@@ -10,7 +9,11 @@ const dinhDang = (f: Intl.DateTimeFormat, iso?: string | null) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "—" : f.format(d);
 };
-export const ngayGio = (iso?: string | null) => dinhDang(dtf, iso);
+export const ngayGio = (iso?: string | null) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : `${df.format(d)} · ${tf.format(d)}`;
+};
 export const ngay = (iso?: string | null) => dinhDang(df, iso);
 export const gio = (iso?: string | null) => dinhDang(tf, iso);
 
@@ -32,10 +35,10 @@ export const dauNgayIso = (yyyyMmDd: string) => `${yyyyMmDd}T00:00:00+07:00`;
 export const cuoiNgayIso = (yyyyMmDd: string) => `${yyyyMmDd}T23:59:59+07:00`;
 
 const vnd = new Intl.NumberFormat("vi-VN");
-export const tien = (n?: number | string | null) => (n === null || n === undefined || n === "" ? "—" : `${vnd.format(Number(n))} đ`);
+export const tien = (n?: number | string | null) => (n === null || n === undefined || n === "" ? "—" : `${vnd.format(Number(n))} ₫`);
 export function khoangTien(tu?: number | string | null, den?: number | string | null) {
   if (tu == null && den == null) return "—";
-  if (tu != null && den != null) return `${vnd.format(Number(tu))} – ${vnd.format(Number(den))} đ`;
+  if (tu != null && den != null) return `${vnd.format(Number(tu))} – ${vnd.format(Number(den))} ₫`;
   return tien(tu ?? den);
 }
 

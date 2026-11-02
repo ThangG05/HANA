@@ -56,3 +56,11 @@ Mở `http://localhost:3000`.
 Đây là bản MVP phát triển local, chưa có đăng nhập/RBAC, audit đầy đủ, hồ sơ khám, báo giá, thanh toán, ca thực hiện, chăm sóc sau ca, gửi tin tự động hoặc tích hợp bên ngoài. API chưa yêu cầu xác thực; chỉ dùng dữ liệu giả lập/local, không nhập dữ liệu khách hàng thật và không đưa API lên Internet trước khi hoàn thành M0 về xác thực, phân quyền và audit.
 
 Các quy tắc chuyển trạng thái và xử lý lịch đang theo đề xuất trong backlog; cần Hana xác nhận trước khi coi là quy trình chính thức.
+
+
+quanly@hana.test
+tuvan@hana.test
+bacsi@hana.test
+dieuduong@hana.test
+
+Khiem792k5@

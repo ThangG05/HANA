@@ -19,6 +19,7 @@ import { PaymentsModule } from "./modules/payments/payments.module.js";
 import { CareModule } from "./modules/care/care.module.js";
 import { ProceduresModule } from "./modules/procedures/procedures.module.js";
 import { QuotesModule } from "./modules/quotes/quotes.module.js";
+import { ConsentsModule } from "./modules/consents/consents.module.js";
 
 @Module({
   imports: [
@@ -33,7 +34,7 @@ import { QuotesModule } from "./modules/quotes/quotes.module.js";
     TasksModule,
     AppointmentsModule,
     ConsultationsModule,
-    QuotesModule, PaymentsModule, ProceduresModule, CareModule,
+    QuotesModule, PaymentsModule, ProceduresModule, CareModule, ConsentsModule,
   ],
   controllers: [HealthController],
   providers: [

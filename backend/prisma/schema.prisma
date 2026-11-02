@@ -645,7 +645,7 @@ model ca_thuc_hien {
   lan_tham_kham                                       lan_tham_kham     @relation(fields: [tham_kham_id, co_hoi_id], references: [tham_kham_id, co_hoi_id], onUpdate: NoAction)
   canh_bao_y_khoa                                     canh_bao_y_khoa[]
   cham_soc_sau_ca                                     cham_soc_sau_ca[]
-  danh_gia                                            danh_gia[]
+  danh_gia                                            danh_gia?
   dong_y                                              dong_y[]
   tai_lieu                                            tai_lieu[]
 
@@ -872,6 +872,7 @@ model danh_gia {
   @@index([khach_hang_id])
   @@index([nguoi_tao_id])
   @@index([nguoi_xu_ly_id])
+  @@unique([ca_id, khach_hang_id])
   @@schema("public")
 }
 

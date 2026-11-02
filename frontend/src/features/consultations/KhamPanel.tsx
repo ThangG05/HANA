@@ -38,7 +38,7 @@ export function KhamPanel({ coHoiId, ketThuc, xong }: { coHoiId: string; ketThuc
             </div>
             <div className="muted small">
               {k.xem_duoc_y_khoa
-                ? can("ho_so_kham", "sua") && <button className="btn btn-ghost btn-sm" onClick={() => setForm({ id: k.tham_kham_id })}>Mở hồ sơ</button>
+                ? <button className="btn btn-ghost btn-sm" onClick={() => setForm({ id: k.tham_kham_id })}>Mở hồ sơ</button>
                 : <Nhan ten="Nội dung y khoa chỉ bác sĩ xem được" />}
             </div>
           </li>
@@ -50,6 +50,8 @@ export function KhamPanel({ coHoiId, ketThuc, xong }: { coHoiId: string; ketThuc
 }
 
 function KhamFormDialog({ mo, id, coHoiId, dong, xong }: { mo: boolean; id?: string; coHoiId: string; dong: () => void; xong: () => void }) {
+  const { can } = useAuth();
+  const chiXem = !!id && !can("ho_so_kham", "sua");
   const [v, setV] = useState<NhapKham>({});
   const [loi, setLoi] = useState("");
   const [dang, setDang] = useState(false);
@@ -66,6 +68,7 @@ function KhamFormDialog({ mo, id, coHoiId, dong, xong }: { mo: boolean; id?: str
 
   async function gui(e: FormEvent) {
     e.preventDefault();
+    if (chiXem) return;
     setDang(true); setLoi("");
     try {
       if (id) await suaLanKham(id, v); else await taoLanKham({ ...v, coHoiId });
@@ -80,14 +83,14 @@ function KhamFormDialog({ mo, id, coHoiId, dong, xong }: { mo: boolean; id?: str
         {TRUONG.map(([k, ten]) => (
           <Truong key={k} nhan={ten} rong={k !== "maHoSoYKhoaNgoai"}>
             {k === "maHoSoYKhoaNgoai"
-              ? <input maxLength={100} value={v[k] ?? ""} onChange={(e) => setV({ ...v, [k]: e.target.value })} />
-              : <textarea rows={3} maxLength={5000} value={v[k] ?? ""} onChange={(e) => setV({ ...v, [k]: e.target.value })} />}
+              ? <input maxLength={100} readOnly={chiXem} value={v[k] ?? ""} onChange={(e) => setV({ ...v, [k]: e.target.value })} />
+              : <textarea rows={3} maxLength={5000} readOnly={chiXem} value={v[k] ?? ""} onChange={(e) => setV({ ...v, [k]: e.target.value })} />}
           </Truong>
         ))}
         <p className="muted small field-full">Mỗi lần mở hoặc sửa hồ sơ đều được ghi nhật ký truy cập. Hồ sơ không sửa được sau khi có báo giá đã gửi cho khách.</p>
         <div className="form-actions">
           <button type="button" className="btn btn-ghost" onClick={dong}>Đóng</button>
-          <button className="btn" disabled={dang}>{dang ? "Đang lưu…" : "Lưu hồ sơ"}</button>
+          {!chiXem && <button className="btn" disabled={dang}>{dang ? "Đang lưu…" : "Lưu hồ sơ"}</button>}
         </div>
       </form>
     </Dialog>

@@ -23,7 +23,12 @@ export class TasksService {
       ...(q.nguoiPhuTrachId && { nguoi_phu_trach_id: q.nguoiPhuTrachId }),
       ...(q.khachHangId && { khach_hang_id: q.khachHangId }),
       ...(q.cuaToi && { nguoi_phu_trach_id: user.id }),
+      ...(q.chuaXong && { trang_thai: { in: CHUA_XONG } }),
       ...(q.quaHan && { trang_thai: { in: CHUA_XONG }, han_hoan_thanh: { lt: new Date() } }),
+      ...(!q.quaHan && (q.hanTu || q.hanDen) && { han_hoan_thanh: {
+        ...(q.hanTu && { gte: new Date(q.hanTu) }),
+        ...(q.hanDen && { lte: new Date(q.hanDen) }),
+      } }),
     };
     const where: Prisma.cong_viecWhereInput = { AND: [phamVi, loc] };
     const [rows, total] = await Promise.all([

@@ -22,7 +22,8 @@ export function ThanhToanPanel({ coHoiId, xong }: { coHoiId: string; xong: () =>
   const [loi, setLoi] = useState("");
   const [dang, setDang] = useState("");
 
-  async function chay(id: string, f: () => Promise<unknown>) {
+  async function chay(id: string, f: () => Promise<unknown>, cauHoi: string) {
+    if (!window.confirm(cauHoi)) return;
     setDang(id); setLoi("");
     try { await f(); await ds.tai(); xong(); } catch (e) { setLoi(loiToiThongBao(e)); await ds.tai(); } finally { setDang(""); }
   }
@@ -40,9 +41,12 @@ export function ThanhToanPanel({ coHoiId, xong }: { coHoiId: string; xong: () =>
               <b>Báo giá phiên bản {b.phien_ban} · {tien(b.tong_bao_gia)}</b>
               {b.trang_thai !== "da_chap_nhan" && <Nhan ten="Không còn hiệu lực" />}
             </div>
-            <dl className="kv" style={{ margin: "6px 0" }}>
-              <dt>Đã thu</dt><dd>{tien(b.tong_thu)}{b.tong_hoan > 0 && <span className="muted"> − hoàn {tien(b.tong_hoan)} = {tien(b.thuc_thu)}</span>}</dd>
-              <dt>Còn phải thu</dt><dd><b>{tien(Math.max(b.con_lai, 0))}</b></dd>
+            <dl className="payment-summary">
+              <div><dt>Giá trị báo giá</dt><dd>{tien(b.tong_bao_gia)}</dd></div>
+              <div><dt>Đã thu</dt><dd>{tien(b.tong_thu)}</dd></div>
+              <div><dt>Đã hoàn</dt><dd>{tien(b.tong_hoan)}</dd></div>
+              <div><dt>Thực thu</dt><dd>{tien(b.thuc_thu)}</dd></div>
+              <div className="payment-remaining"><dt>Còn phải thu</dt><dd>{tien(Math.max(b.con_lai, 0))}</dd></div>
             </dl>
             {b.giao_dich.length > 0 && (
               <table className="table small">
@@ -55,8 +59,8 @@ export function ThanhToanPanel({ coHoiId, xong }: { coHoiId: string; xong: () =>
                       <td style={{ textAlign: "right" }}>
                         {g.trang_thai === "cho_xac_nhan" && can("thanh_toan", "sua") && (
                           <div style={{ display: "grid", gap: 4 }}>
-                            <button className="btn btn-sm" disabled={!!dang} onClick={() => chay(g.thanh_toan_id, () => xacNhanThu(g.thanh_toan_id))}>{dang === g.thanh_toan_id ? "Đang lưu…" : "Đã nhận tiền"}</button>
-                            <button className="btn btn-ghost btn-sm" disabled={!!dang} onClick={() => chay(g.thanh_toan_id, () => huyChoXacNhan(g.thanh_toan_id))}>Hủy</button>
+                            <button className="btn btn-sm" disabled={!!dang} onClick={() => chay(g.thanh_toan_id, () => xacNhanThu(g.thanh_toan_id), `Xác nhận đã nhận ${tien(g.so_tien)} vào tài khoản? Giao dịch sẽ được tính vào thực thu.`)}>{dang === g.thanh_toan_id ? "Đang lưu…" : "Đã nhận tiền"}</button>
+                            <button className="btn btn-ghost btn-sm" disabled={!!dang} onClick={() => chay(g.thanh_toan_id, () => huyChoXacNhan(g.thanh_toan_id), `Hủy khoản chuyển khoản ${tien(g.so_tien)} đang chờ xác nhận?`)}>Hủy</button>
                           </div>
                         )}
                         {g.trang_thai === "thanh_cong" && g.loai_giao_dich !== "hoan_tien" && can("thanh_toan", "duyet") && (
@@ -117,7 +121,7 @@ function ThuTienDialog({ bg, dong, xong }: { bg: TienBaoGia | null; dong: () => 
         <Truong nhan="Phương thức">
           <select value={pt} onChange={(e) => setPt(e.target.value)}>{Object.entries(PHUONG_THUC).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         </Truong>
-        <Truong nhan="Số tiền (đ) *" rong><input type="number" min={1} required value={soTien} onChange={(e) => setSoTien(e.target.value)} autoFocus /></Truong>
+        <Truong nhan="Số tiền (₫) *" rong><input type="number" min={1} required value={soTien} onChange={(e) => setSoTien(e.target.value)} autoFocus /></Truong>
         {pt !== "tien_mat" && (
           <>
             <Truong nhan="Ngân hàng / máy POS"><input maxLength={100} value={ben} onChange={(e) => setBen(e.target.value)} required={!!ma.trim()} /></Truong>
@@ -163,7 +167,7 @@ function HoanTienDialog({ muc, dong, xong }: { muc: { bg: TienBaoGia; gd: GiaoDi
       <form className="form" onSubmit={gui}>
         <div className="field-full"><Loi>{loi}</Loi></div>
         {muc && <p className="field-full muted small">Khoản thu gốc {tien(muc.gd.so_tien)} ({ngayGio(muc.gd.thoi_diem)}). Còn hoàn được: <b>{tien(conHoan)}</b></p>}
-        <Truong nhan="Số tiền hoàn (đ) *"><input type="number" min={1} required value={soTien} onChange={(e) => setSoTien(e.target.value)} autoFocus /></Truong>
+        <Truong nhan="Số tiền hoàn (₫) *"><input type="number" min={1} required value={soTien} onChange={(e) => setSoTien(e.target.value)} autoFocus /></Truong>
         <Truong nhan="Hoàn bằng">
           <select value={pt} onChange={(e) => setPt(e.target.value)}>{Object.entries(PHUONG_THUC).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         </Truong>

@@ -1,7 +1,9 @@
 import { api } from "@/src/lib/api-client";
-import type { NhapHoan, NhapThu, TienBaoGia } from "./types";
+import type { NhapHoan, NhapThu, SoChoXacNhan, SoCongNo, TienBaoGia } from "./types";
 
 export const layThanhToanTheoCoHoi = (coHoiId: string) => api<TienBaoGia[]>(`/opportunities/${coHoiId}/payments`);
+export const laySoCongNo = (q: { q?: string; page?: number; pageSize?: number }) => api<SoCongNo>("/payments/receivables", { query: q });
+export const layChoXacNhan = (q: { q?: string; page?: number; pageSize?: number }) => api<SoChoXacNhan>("/payments/pending", { query: q });
 export const thuTien = (b: NhapThu) => api<unknown>("/payments", { method: "POST", body: b });
 export const hoanTien = (b: NhapHoan) => api<unknown>("/payments/refunds", { method: "POST", body: b });
 export const xacNhanThu = (id: string) => api<unknown>(`/payments/${id}/confirm`, { method: "POST" });

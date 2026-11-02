@@ -11,10 +11,18 @@ import {
   type TrangThaiCoHoi,
   type TrangThaiLichHen,
 } from "../../common/utils/trang-thai.js";
-import { DoiLichDto, DoiTrangThaiLichHenDto, TaoLichHenDto, TruyVanLichHen } from "./dto/appointment.dto.js";
+import { DoiLichDto, DoiTrangThaiLichHenDto, TaoLichHenDto, TruyVanLichHen, TruyVanTongQuanLich } from "./dto/appointment.dto.js";
 
 const GIO_TOI_DA = 12;
 const CO_HOI_KET_THUC: TrangThaiCoHoi[] = ["hoan_tat", "ngung_cham_soc"];
+
+function khoangNgayVN(ngay: string) {
+  const batDau = new Date(`${ngay}T00:00:00+07:00`);
+  if (Number.isNaN(batDau.getTime()) || new Date(batDau.getTime() + 7 * 3600_000).toISOString().slice(0, 10) !== ngay) {
+    throw new BadRequestException("Ngày không hợp lệ");
+  }
+  return { gte: batDau, lt: new Date(batDau.getTime() + 24 * 3600_000) };
+}
 
 /** Hạn "trong ngày" theo giờ Việt Nam (UTC+7): 23:59 hôm nay, nhưng tối thiểu 2 giờ kể từ bây giờ. */
 export function hanTrongNgayVN(bayGio: Date): Date {
@@ -34,12 +42,18 @@ export class AppointmentsService {
   async danhSach(user: AuthUser, pv: PhamVi, q: TruyVanLichHen) {
     const phamVi = await this.scope.lichHen(user, pv);
     const loc: Prisma.lich_henWhereInput = {
-      ...(q.from && { bat_dau: { gte: new Date(q.from) } }),
-      ...(q.to && { ket_thuc: { lte: new Date(q.to) } }),
+      ...(q.ngay ? { bat_dau: khoangNgayVN(q.ngay) } : {
+        ...(q.from && { bat_dau: { gte: new Date(q.from) } }),
+        ...(q.to && { ket_thuc: { lte: new Date(q.to) } }),
+      }),
       ...(q.bacSiId && { bac_si_id: q.bacSiId }),
       ...(q.coSoId && { co_so_id: q.coSoId }),
       ...(q.coHoiId && { co_hoi_id: q.coHoiId }),
       ...(q.khachHangId && { khach_hang_id: q.khachHangId }),
+      ...(q.q?.trim() && { khach_hang: { OR: [
+        { ho_ten: { contains: q.q.trim(), mode: "insensitive" } },
+        { so_dien_thoai: { contains: q.q.trim() } },
+      ] } }),
       ...(q.trangThai && { trang_thai: q.trangThai }),
     };
     const where: Prisma.lich_henWhereInput = { AND: [phamVi, loc] };
@@ -48,6 +62,27 @@ export class AppointmentsService {
       this.prisma.lich_hen.count({ where }),
     ]);
     return boTrang(await this.lamGiau(rows), total, q);
+  }
+
+  async tongQuanNgay(user: AuthUser, pv: PhamVi, q: TruyVanTongQuanLich) {
+    const where: Prisma.lich_henWhereInput = { AND: [await this.scope.lichHen(user, pv), {
+      bat_dau: khoangNgayVN(q.ngay),
+      ...(q.coSoId && { co_so_id: q.coSoId }),
+    }] };
+    const [trangThai, mocGio] = await Promise.all([
+      this.prisma.lich_hen.groupBy({ by: ["trang_thai"], where, _count: { _all: true } }),
+      this.prisma.lich_hen.findMany({ where, select: { bat_dau: true, trang_thai: true } }),
+    ]);
+    const theoTrangThai = Object.fromEntries(trangThai.map((x) => [x.trang_thai, x._count._all]));
+    const theoKhungGio = [0, 0, 0, 0];
+    for (const lich of mocGio) {
+      if (lich.trang_thai === "huy" || lich.trang_thai === "da_doi_lich") continue;
+      const gio = lich.bat_dau.getUTCHours() + 7;
+      const gioVN = gio >= 24 ? gio - 24 : gio;
+      const viTri = gioVN < 10 ? 0 : gioVN < 13 ? 1 : gioVN < 17 ? 2 : 3;
+      theoKhungGio[viTri] += 1;
+    }
+    return { tong: mocGio.length, theoTrangThai, theoKhungGio };
   }
 
   async chiTiet(user: AuthUser, pv: PhamVi, id: string) {
@@ -118,6 +153,22 @@ export class AppointmentsService {
     if (pv === "co_so" && coSoId !== user.coSoId) throw new ForbiddenException("Bạn chỉ được đặt lịch cho cơ sở của mình");
   }
 
+  /** Nhắc nhân viên xác nhận/liên hệ khách; tin gửi khách là luồng khác, chỉ bật khi đã có kênh được duyệt. */
+  private async taoViecNhac(db: Pick<PrismaService, "cong_viec">, p: {
+    lichId: string; khachId: string; coHoiId: string; batDau: Date; nguoiNhanId: string; nguoiTaoId: string;
+  }) {
+    for (const [moc, soGio] of [["1-ngay", 24], ["2-gio", 2]] as const) {
+      const han = new Date(p.batDau.getTime() - soGio * 3600_000);
+      if (han.getTime() <= Date.now()) continue;
+      await db.cong_viec.create({ data: {
+        khach_hang_id: p.khachId, co_hoi_id: p.coHoiId, lich_hen_id: p.lichId,
+        loai_cong_viec: "nhac_lich", noi_dung: `Liên hệ nhắc khách trước lịch hẹn ${soGio === 24 ? "1 ngày" : "2 giờ"}`,
+        nguoi_phu_trach_id: p.nguoiNhanId, han_hoan_thanh: han, muc_uu_tien: "binh_thuong",
+        khoa_chong_trung: `nhac-lich:${p.lichId}:${moc}`, nguoi_tao_id: p.nguoiTaoId,
+      } });
+    }
+  }
+
   async tao(user: AuthUser, pv: PhamVi, dto: TaoLichHenDto) {
     const pvCoHoi = phamViCua(user, "co_hoi", "xem");
     if (!pvCoHoi) throw new ForbiddenException("Bạn không có quyền xem cơ hội");
@@ -136,8 +187,8 @@ export class AppointmentsService {
     const phong = dto.phong?.trim() || null;
     await this.kiemTraTrung(this.prisma, { bacSiId: dto.bacSiId, coSoId: dto.coSoId, phong, batDau, ketThuc });
 
-    return this.prisma.lich_hen.create({
-      data: {
+    return this.prisma.$transaction(async (tx) => {
+      const lich = await tx.lich_hen.create({ data: {
         khach_hang_id: coHoi.khach_hang_id,
         co_hoi_id: coHoi.co_hoi_id,
         co_so_id: dto.coSoId,
@@ -147,7 +198,12 @@ export class AppointmentsService {
         bat_dau: batDau,
         ket_thuc: ketThuc,
         nguoi_tao_id: user.id,
-      },
+      } });
+      await this.taoViecNhac(tx, {
+        lichId: lich.lich_hen_id, khachId: lich.khach_hang_id, coHoiId: lich.co_hoi_id,
+        batDau, nguoiNhanId: coHoi.tu_van_vien_id ?? user.id, nguoiTaoId: user.id,
+      });
+      return lich;
     });
   }
 
@@ -179,6 +235,13 @@ export class AppointmentsService {
         },
       });
       if (kq.count !== 1) throw new ConflictException("Lịch hẹn vừa được người khác thay đổi, hãy tải lại");
+
+      if (["da_den", "hoan_thanh", "huy", "khong_den"].includes(den)) {
+        await tx.cong_viec.updateMany({ where: {
+          lich_hen_id: id, khoa_chong_trung: { startsWith: `nhac-lich:${id}:` },
+          trang_thai: { in: ["cho_lam", "dang_lam"] },
+        }, data: { trang_thai: "huy", ket_qua: "Lịch hẹn đã đổi trạng thái" } });
+      }
 
       // Khách không đến: nhắc tư vấn viên gọi sắp xếp lại trong ngày (quy trình mục 7). Khóa chống trùng → chạy lại không tạo thêm.
       if (den === "khong_den") {
@@ -246,9 +309,18 @@ export class AppointmentsService {
           nguoi_tao_id: user.id,
         },
       });
+      await tx.cong_viec.updateMany({ where: {
+        lich_hen_id: cu.lich_hen_id, khoa_chong_trung: { startsWith: `nhac-lich:${cu.lich_hen_id}:` },
+        trang_thai: { in: ["cho_lam", "dang_lam"] },
+      }, data: { trang_thai: "huy", ket_qua: "Đã đổi lịch hẹn" } });
       await tx.cong_viec.updateMany({
         where: { lich_hen_id: cu.lich_hen_id, trang_thai: { in: ["cho_lam", "dang_lam"] } },
         data: { lich_hen_id: moi.lich_hen_id },
+      });
+      const coHoi = await tx.co_hoi_dich_vu.findUnique({ where: { co_hoi_id: cu.co_hoi_id }, select: { tu_van_vien_id: true } });
+      await this.taoViecNhac(tx, {
+        lichId: moi.lich_hen_id, khachId: moi.khach_hang_id, coHoiId: moi.co_hoi_id,
+        batDau, nguoiNhanId: coHoi?.tu_van_vien_id ?? user.id, nguoiTaoId: user.id,
       });
       return moi;
     });

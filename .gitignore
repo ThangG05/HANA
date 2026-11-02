@@ -8,8 +8,9 @@ backend/src/generated/
 .env.*
 !.env.example
 *.log
+*.dump
+*.backup
 .DS_Store
-backend/db/migrations/*.sql
 backend/db/chuyen-project/*
 backend/prisma/schema.bak
 backend/prisma/schema.cu.prisma

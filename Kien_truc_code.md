@@ -17,8 +17,19 @@ HanaPremiumCRM/
 
 - **Frontend** hiển thị dữ liệu, nhận thao tác và gọi API. Không tự quyết định quyền bảo mật hay quy tắc tài chính/y khoa.
 - **Backend** xác thực, phân quyền, kiểm tra dữ liệu và quy tắc nghiệp vụ; là nơi duy nhất ghi dữ liệu vào database.
-- **PostgreSQL** lưu dữ liệu chuẩn. Thay đổi cấu trúc database được quản lý bằng Prisma schema và migration.
+- **PostgreSQL trên Supabase** lưu dữ liệu chuẩn. Migration SQL trong `backend/db/migrations/` là nguồn thay đổi schema; Prisma schema được cập nhật bằng `db pull` rồi `db:generate`.
 - Không để frontend kết nối trực tiếp PostgreSQL, chứa database credential, hoặc tính lại một kết quả quan trọng rồi xem đó là dữ liệu tin cậy.
+
+### Một phần mềm vận hành thống nhất
+
+Người dùng vào một ứng dụng, một tài khoản và một menu theo quyền. `frontend/` và `backend/` vẫn là hai tiến trình riêng để cả nhóm phát triển, chạy và triển khai độc lập. Không tạo bản sao hồ sơ khách cho từng bộ phận: lịch hẹn, thăm khám, báo giá, thực hiện, thanh toán và chăm sóc cùng tham chiếu khách hàng và cơ hội dịch vụ tương ứng.
+
+- `/appointments`: lịch trong ngày, số liệu theo cơ sở và phạm vi quyền; tìm khách, đổi trạng thái, đặt lịch qua nhu cầu dịch vụ.
+- `/appointments/all`: tra cứu lịch theo khoảng ngày.
+- `/customers/[customerId]`: hồ sơ khách trung tâm với liên kết đến các nhu cầu dịch vụ, lịch hẹn, liên hệ và công việc.
+- `/opportunities/[opportunityId]`: quy trình của một nhu cầu dịch vụ gồm khám, báo giá, ca thực hiện, thanh toán và chăm sóc. Một khách có thể có nhiều nhu cầu dịch vụ, mỗi nhu cầu giữ trạng thái riêng.
+
+Các mục trong ảnh tham khảo như kho, thẻ, kế toán đầy đủ, marketing và sơ đồ chẩn đoán chưa trở thành module chỉ vì xuất hiện trên menu mẫu. Cần chốt dữ liệu, quy trình, vai trò và phạm vi trước khi triển khai từng module.
 
 ## 2. Tổ chức module: theo chức năng, quyền theo role
 
@@ -42,7 +53,7 @@ Ví dụ: tư vấn viên và quản lý đều có thể vào module cơ hội,
 
 ## 3. Cấu trúc backend mục tiêu
 
-Repo hiện có `backend/src/crm/` chứa controller và service cho lát cắt MVP. Khi bổ sung nghiệp vụ, tách dần theo cấu trúc dưới đây; không cần đổi tên toàn bộ code đang chạy trong một lần.
+Repo hiện đã tách phần lớn backend theo `backend/src/modules/`. Khi bổ sung nghiệp vụ, tiếp tục theo cấu trúc dưới đây.
 
 ```text
 backend/src/
@@ -148,13 +159,13 @@ Thiết kế quyền theo hai lớp:
 1. **Permission theo hành động/module:** ví dụ `customers.read`, `customers.create`, `opportunities.assign`, `consultations.read`, `payments.refund`.
 2. **Scope dữ liệu:** bản ghi được giao, cùng cơ sở, hoặc toàn hệ thống; quyền rộng hơn phải được cấp rõ.
 
-Mỗi endpoint nhạy cảm cần xác thực user, kiểm tra permission và scope ở server. Việc xem/sửa/tải hồ sơ y khoa, ảnh/tệp, thanh toán cần audit actor, đối tượng, hành động và thời điểm. Quyền hiển thị trang không thay thế API guard. Trước khi hoàn tất auth/RBAC/audit, chỉ chạy local bằng dữ liệu giả lập; không triển khai công khai hoặc nhập dữ liệu khách thật.
+Mỗi endpoint nhạy cảm cần xác thực user, kiểm tra permission và scope ở server. Việc xem/sửa/tải hồ sơ y khoa, ảnh/tệp, thanh toán cần audit actor, đối tượng, hành động và thời điểm. Quyền hiển thị trang không thay thế API guard. Trước khi nhập dữ liệu khách thật, cần rà soát các đường API, audit và quy trình vận hành trên môi trường triển khai.
 
 Secret để trong `.env` local hoặc secret manager môi trường triển khai; commit `.env.example` với giá trị giả, không commit `.env`, token, password hoặc file khách hàng.
 
 ## 7. Database, migration và làm việc nhóm
 
-- `backend/prisma/schema.prisma` là nguồn schema Prisma; migration sinh ra và review cùng thay đổi schema.
+- `backend/db/migrations/*.sql` là nguồn thay đổi database Supabase; chạy SQL theo thứ tự, sau đó `prisma db pull` và `db:generate`. Không dùng `prisma migrate` cho repo này.
 - Mỗi migration có một owner chịu trách nhiệm thứ tự. Tránh hai người đồng thời tạo/chỉnh migration trên cùng nhánh.
 - Không sửa migration đã áp dụng ở môi trường dùng chung/production; tạo migration mới để sửa tiếp.
 - PR thay đổi schema cần nêu ảnh hưởng dữ liệu cũ, khóa/index/FK, cách triển khai và rollback/khắc phục.
@@ -188,10 +199,14 @@ Secret để trong `.env` local hoặc secret manager môi trường triển kha
 - [ ] Migration được review, không sửa migration đã chạy trên môi trường chung.
 - [ ] Build/typecheck và kiểm tra nghiệp vụ liên quan đã chạy; hướng dẫn/contract được cập nhật.
 
-## 9. Trạng thái repo hiện tại và bước refactor
+## 9. Trạng thái repo hiện tại và bước tiếp theo
 
-- Đã tách `frontend/` và `backend/`; frontend là một dashboard MVP trong `app/page.tsx`.
-- Backend hiện có `crm` module chung cho các API MVP. Đây là bước khởi đầu, chưa phải cấu trúc module cuối cùng.
-- Khi thêm tính năng, chuyển dần controller/service thành `customers`, `opportunities`, `interactions`, `tasks`, `appointments` và `catalogs`; frontend tách page/feature theo cùng ranh giới.
-- Không refactor mọi thứ chỉ để đổi tên folder. Tách khi có task nghiệp vụ tương ứng, giữ build chạy sau mỗi bước.
-- Đăng nhập/RBAC, audit đầy đủ, nghiệp vụ khám/báo giá/thanh toán/ca/hậu phẫu và automation chưa hoàn thiện. Đây là các phần tiếp theo cần thiết trước khi dùng dữ liệu thật.
+> Cập nhật 02/11/2026: module `consents` quản lý bản ghi đồng ý/rút lại theo bảng `dong_y`; module `payments` có sổ công nợ và danh sách chuyển khoản chờ xác nhận. Công việc nhắc lịch 24 giờ/2 giờ và theo dõi cơ hội 1–3–7–14 ngày được tạo nội bộ. Các mục này không tự gửi tin cho khách.
+
+> G01 (2026-11-02): đã tạo baseline từ schema `public` hiện tại và seed vai trò/quyền trong `backend/db/migrations/`; SQL không còn bị `.gitignore` bỏ qua. Đã dựng và đối chiếu trên PostgreSQL 17 riêng. Các file migration gốc 001–009 vẫn thất lạc, nên baseline là ảnh chụp trạng thái hiện tại, chỉ dùng cho project mới. Xem `backend/db/migrations/README.md`.
+
+- `frontend/` và `backend/` đã tách để chạy riêng. Frontend dùng một khung ứng dụng và menu theo quyền.
+- Backend đã có module riêng cho xác thực, danh mục, khách hàng, cơ hội, tương tác, công việc, lịch hẹn, thăm khám, báo giá, thanh toán, ca thực hiện và chăm sóc.
+- Luồng hồ sơ khách → nhu cầu dịch vụ → lịch hẹn → khám/báo giá/ca/thu tiền/chăm sóc đã liên kết bằng ID, nhưng trải nghiệm vận hành và độ sâu từng nghiệp vụ còn cần hoàn thiện.
+- Các chức năng chưa có như kho, thẻ, kế toán tổng hợp, marketing, sơ đồ chẩn đoán và mã bệnh cần task nghiệp vụ, schema, quyền và màn hình riêng. Không thêm menu dẫn tới trang chưa triển khai.
+- Rà soát audit, phân quyền ở từng API trước khi nhập dữ liệu thật; tài liệu và dữ liệu demo phải được cập nhật cùng code.

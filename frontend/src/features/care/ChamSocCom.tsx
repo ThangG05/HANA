@@ -152,7 +152,7 @@ export function CanhBaoDong({ cb, xong, hienKhach }: { cb: CanhBao; xong: () => 
   }
 
   return (
-    <li>
+    <li className={cb.trang_thai === "moi" ? "medical-alert-new" : undefined}>
       <div className="top">
         <b>{hienKhach ? `${cb.khach_hang ?? "Khách"} · ` : ""}{cb.mo_ta}</b>
         <span style={{ display: "flex", gap: 6 }}><Nhan ten={UU_TIEN[cb.muc_uu_tien]} tone={TONE_UT[cb.muc_uu_tien]} /><Nhan ten={TT_CANH_BAO[cb.trang_thai]} tone={TONE_CB[cb.trang_thai]} /></span>

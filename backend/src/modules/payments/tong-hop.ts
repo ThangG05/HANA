@@ -26,7 +26,8 @@ export async function tongHopTien(db: Pick<PrismaService, "chi_tiet_bao_gia" | "
     const moi = gd.filter((g) => g.bao_gia_id === id);
     const thu = moi.filter((g) => g.loai_giao_dich !== "hoan_tien").reduce((a, g) => a + so(g.so_tien), 0);
     const hoan = moi.filter((g) => g.loai_giao_dich === "hoan_tien").reduce((a, g) => a + so(g.so_tien), 0);
-    kq.set(id, { tong, thu, hoan, thucThu: thu - hoan, conLai: tong - thu });
+    const thucThu = thu - hoan;
+    kq.set(id, { tong, thu, hoan, thucThu, conLai: tong - thucThu });
   }
   return kq;
 }

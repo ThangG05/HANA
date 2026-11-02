@@ -1,4 +1,4 @@
-import { IsDateString, IsIn, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+import { IsDateString, IsIn, IsOptional, IsString, IsUUID, Matches, MaxLength } from "class-validator";
 import { PaginationDto } from "../../../common/dto/pagination.dto.js";
 import { TRANG_THAI_LICH_HEN } from "../../../common/utils/trang-thai.js";
 
@@ -32,11 +32,18 @@ export class DoiLichDto {
 }
 
 export class TruyVanLichHen extends PaginationDto {
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) ngay?: string;
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
   @IsOptional() @IsUUID() bacSiId?: string;
   @IsOptional() @IsUUID() coSoId?: string;
   @IsOptional() @IsUUID() coHoiId?: string;
   @IsOptional() @IsUUID() khachHangId?: string;
+  @IsOptional() @IsString() @MaxLength(100) q?: string;
   @IsOptional() @IsIn(TRANG_THAI_LICH_HEN as unknown as string[]) trangThai?: string;
+}
+
+export class TruyVanTongQuanLich {
+  @Matches(/^\d{4}-\d{2}-\d{2}$/) ngay: string;
+  @IsOptional() @IsUUID() coSoId?: string;
 }

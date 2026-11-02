@@ -17,7 +17,7 @@ export function BangLichHen({ ds, tai, hienKhach = true }: { ds: LichHen[]; tai:
     <>
       <Loi>{loi}</Loi>
       <div className="table-wrap">
-        <table>
+        <table className="mobile-card-table">
           <thead>
             <tr>
               <th>Thời gian</th>
@@ -30,25 +30,25 @@ export function BangLichHen({ ds, tai, hienKhach = true }: { ds: LichHen[]; tai:
           <tbody>
             {ds.map((l) => (
               <tr key={l.lich_hen_id}>
-                <td className="nowrap">
+                <td data-label="Thời gian" className="nowrap">
                   <b>{ngay(l.bat_dau)}</b>
                   <span className="sub">{gio(l.bat_dau)} – {gio(l.ket_thuc)} · {nhan(NHAN_LOAI_LICH, l.loai_lich_hen)}</span>
                 </td>
                 {hienKhach && (
-                  <td>
+                  <td data-label="Khách hàng">
                     {l.khach_hang ? <Link href={`/customers/${l.khach_hang_id}`}>{l.khach_hang.ho_ten}</Link> : "—"}
                     <span className="sub"><Link href={`/opportunities/${l.co_hoi_id}`}>Xem cơ hội</Link></span>
                   </td>
                 )}
-                <td>
+                <td data-label="Nơi khám">
                   {l.co_so ?? "—"}
                   <span className="sub">{[l.phong && `Phòng ${l.phong}`, l.bac_si && `BS ${l.bac_si}`].filter(Boolean).join(" · ") || "Chưa xếp phòng/bác sĩ"}</span>
                 </td>
-                <td>
+                <td data-label="Trạng thái">
                   <TrangThaiLich v={l.trang_thai} />
                   {l.ly_do_huy && <span className="sub">{l.ly_do_huy}</span>}
                 </td>
-                <td><NutLichHen lich={l} tai={tai} doiLich={setDoi} baoLoi={setLoi} /></td>
+                <td data-label="Thao tác"><NutLichHen lich={l} tai={tai} doiLich={setDoi} baoLoi={setLoi} /></td>
               </tr>
             ))}
           </tbody>
